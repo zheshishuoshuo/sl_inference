@@ -10,7 +10,7 @@ from lens_model import LensModel
 from lens_solver import solve_single_lens
 
 # === Utils ===
-# to check. use it to model the relation between logM_sps and logRe
+# to 
 def logRe_of_logMsps(logMsps):
     """根据 logM_sps 估计 logRe"""
     a = 0.6181

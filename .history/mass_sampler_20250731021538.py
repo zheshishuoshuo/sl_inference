@@ -43,6 +43,50 @@ MODEL_PARAMS = {
         'sigma_h': 0.35
     }
 }
+import numpy as np
+from scipy.stats import skewnorm, norm
+
+# ==============================
+# 模型参数（来源：Sonnenfeld+2019）
+# ==============================
+MODEL_PARAMS = {
+    'deVauc': {
+        'mu_star': 11.252,
+        'sigma_star': 0.202,
+        'log_s_star': 0.17,
+        'mu_R0': 0.774,
+        'beta_R': 0.977,
+        'sigma_R': 0.112,
+        'mu_h0': 12.91,
+        'beta_h': 2.04,
+        'xi_h': 0.0,
+        'sigma_h': 0.37
+    },
+    'SerExp': {
+        'mu_star': 11.274,
+        'sigma_star': 0.254,
+        'log_s_star': 0.31,
+        'mu_R0': 0.854,
+        'beta_R': 1.218,
+        'sigma_R': 0.129,
+        'mu_h0': 12.83,
+        'beta_h': 1.73,
+        'xi_h': -0.03,
+        'sigma_h': 0.32
+    },
+    'Sersic': {
+        'mu_star': 11.249,
+        'sigma_star': 0.285,
+        'log_s_star': 0.44,
+        'mu_R0': 0.855,
+        'beta_R': 1.366,
+        'sigma_R': 0.147,
+        'mu_h0': 12.79,
+        'beta_h': 1.70,
+        'xi_h': -0.14,
+        'sigma_h': 0.35
+    }
+}
 
 # ==============================
 # 生成 logM_star_sps 样本（skew-normal）

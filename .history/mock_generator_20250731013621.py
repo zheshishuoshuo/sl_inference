@@ -43,8 +43,4 @@ def run_mock_simulation(n_samples, mag_source=26.0, maximum_magnitude=26.5, zl=0
     
 
 
-if __name__ == "__main__":
-    n_samples = 1000
-    mock_lens_data, mock_observed_data = run_mock_simulation(n_samples)
-    print(mock_lens_data.head())
-    print(mock_observed_data.head())
+if
