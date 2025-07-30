@@ -8,7 +8,7 @@ import numpy as np
 # logM_star = log_alpha_sps + logM_sps
 
 
-def lens_properties(model, beta_unit=0.5, logalpha_sps=0.1):
+def lens_properties(model, beta_unit=0.5):
    xA, xB = solve_single_lens(model, beta_unit)
    kappaA = model.kappa(xA)
    kappaB = model.kappa(xB)
@@ -59,7 +59,7 @@ def observed_data(input_df, caustic= False):
    zs = input_df['zs'].values[0]  # [redshift]
 
    model = LensModel(logM_star=logM_star, logM_halo=logM_halo, logRe=logRe, zl=zl, zs=zs)
-   properties = lens_properties(model, beta_unit, logalpha_sps)
+   properties = lens_properties(model, beta_unit)
 
    # magnificationA, magnificationB = properties['magnificationA'], properties['magnificationB']
    
