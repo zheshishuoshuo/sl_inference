@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from lens_properties import observed_data
+from .lens_properties import observed_data
 from tqdm import tqdm
-from mass_sampler import generate_samples
+from .mass_sampler import generate_samples
 
 # SPS PARAMETER
 # M_star = alpha_sps * M_sps
@@ -51,9 +51,9 @@ from mass_sampler import generate_samples
 
 import numpy as np
 import pandas as pd
-from lens_properties import observed_data
+from .lens_properties import observed_data
 from tqdm import tqdm
-from mass_sampler import generate_samples
+from .mass_sampler import generate_samples
 import multiprocessing
 
 

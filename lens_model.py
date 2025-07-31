@@ -1,8 +1,6 @@
 import numpy as np
-from sl_cosmology import Dang
-from sl_profiles import deVaucouleurs as deV, nfw
-from scipy.interpolate import splrep, splint
-from sl_cosmology import Dang, G, M_Sun, Mpc, c, rhoc, yr
+from .sl_cosmology import Dang, G, M_Sun, Mpc, c, rhoc, yr
+from .sl_profiles import deVaucouleurs as deV, nfw
 from scipy.interpolate import interp1d, splev, splint, splrep
 from scipy.optimize import brentq, leastsq, minimize_scalar
 from scipy.integrate import quad

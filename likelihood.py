@@ -1,7 +1,7 @@
-from utils import selection_function, mag_likelihood
-from lens_model import LensModel
-from lens_solver import solve_lens_parameters_from_obs, compute_detJ
-from cached_A import cached_A_interp
+from .utils import selection_function, mag_likelihood
+from .lens_model import LensModel
+from .lens_solver import solve_lens_parameters_from_obs, compute_detJ
+from .cached_A import cached_A_interp
 from scipy.stats import norm
 import numpy as np
 # def log_prior(eta): ...

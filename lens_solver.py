@@ -1,8 +1,8 @@
-from lens_model import LensModel
+from .lens_model import LensModel
 from scipy.interpolate import splrep, splint
-from sl_cosmology import Dang, Mpc, c, G, M_Sun, rhoc
+from .sl_cosmology import Dang, Mpc, c, G, M_Sun, rhoc
 import numpy as np
-from sl_profiles import nfw, deVaucouleurs as deV
+from .sl_profiles import nfw, deVaucouleurs as deV
 from scipy.optimize import brentq
 
 

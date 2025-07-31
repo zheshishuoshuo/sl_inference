@@ -1,4 +1,4 @@
-from lens_solver import solve_lens_parameters_from_obs, compute_detJ
+from .lens_solver import solve_lens_parameters_from_obs, compute_detJ
 from scipy.interpolate import interp1d
 import numpy as np
 
