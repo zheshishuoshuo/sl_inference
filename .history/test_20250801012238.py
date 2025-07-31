@@ -28,7 +28,7 @@ def run():
         log_posterior_func=log_posterior,
         backend_file=test_filename,
         nwalkers=12,
-        nsteps=600,
+        nsteps=300,
         ndim=6,
         initial_guess=np.array([12.5, 2.0, 0.0, 0.3, 0.05, 0.05]),
         processes=4
