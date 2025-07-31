@@ -1,6 +1,6 @@
-from lens_solver import solve_single_lens
-from lens_model import kpc_to_arcsec, LensModel
-from sl_cosmology import Dang
+from .lens_solver import solve_single_lens
+from .lens_model import kpc_to_arcsec, LensModel
+from .sl_cosmology import Dang
 import numpy as np
 
 # SPS PARAMETER

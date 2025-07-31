@@ -4,7 +4,7 @@ import emcee
 from emcee.backends import HDFBackend
 import multiprocessing
 from functools import partial
-from likelihood import log_posterior, initializer_for_pool  # ⬅ 你已经写了它！
+from .likelihood import log_posterior, initializer_for_pool  # ⬅ 你已经写了它！
 
 def run_mcmc(
     data_df,
