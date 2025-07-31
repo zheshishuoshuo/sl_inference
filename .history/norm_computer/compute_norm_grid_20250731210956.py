@@ -8,24 +8,14 @@ from scipy.stats import norm
 from scipy.special import erf
 from ..lens_model import LensModel
 from ..lens_solver import solve_single_lens
-from ..mass_sampler import MODEL_PARAMS
 
 # === Utils ===
 # to check. use it to model the relation between logM_sps and logRe
-# def logRe_of_logMsps(logMsps):
-#     """根据 logM_sps 估计 logRe"""
-#     a = 0.6181
-#     b = -6.2756
-#     return a * logMsps + b
-
-
-def logRe_of_logMsps(logMsps, model='deVauc'):
-    """
-    使用 Sonnenfeld+2019 的 Re–M* 关系估计 logRe 的均值
-    """
-    p = MODEL_PARAMS[model]
-    return p['mu_R0'] + p['beta_R'] * (logMsps - 11.4)
-
+def logRe_of_logMsps(logMsps):
+    """根据 logM_sps 估计 logRe"""
+    a = 0.6181
+    b = -6.2756
+    return a * logMsps + b
 
 # === Sample Generation ===
 
@@ -155,14 +145,13 @@ def build_A_phys_table_parallel_4D(muDM_grid, sigmaDM_grid, betaDM_grid, xiDM_gr
 # === 主程序入口 ===
 
 if __name__ == "__main__":
-    muDM_grid    = np.linspace(12, 13, 100)      # Δμ = 0.0345
-    sigmaDM_grid = np.linspace(0.1, 0.5, 100)    # Δσ = 0.0138
-    betaDM_grid  = np.linspace(1.0, 3.0, 100)    # Δβ = 0.069
-    xiDM_grid    = 0                            # 固定为 0
-
+    muDM_grid    = np.linspace(12.0, 13.2, 10)
+    sigmaDM_grid = np.linspace(0.1, 0.3, 10)
+    betaDM_grid  = np.linspace(0.0, 1.0, 10)
+    xiDM_grid    = np.linspace(0.0, 0.5, 10)
 
     build_A_phys_table_parallel_4D(
         muDM_grid, sigmaDM_grid, betaDM_grid, xiDM_grid,
-        n_samples=2000,
-        filename="../tables/A_phys_table_4D.csv"
+        n_samples=1000,
+        filename="A_phys_table_4D.csv"
     )

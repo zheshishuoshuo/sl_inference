@@ -163,6 +163,6 @@ if __name__ == "__main__":
 
     build_A_phys_table_parallel_4D(
         muDM_grid, sigmaDM_grid, betaDM_grid, xiDM_grid,
-        n_samples=2000,
-        filename="../tables/A_phys_table_4D.csv"
+        n_samples=1000,
+        filename="A_phys_table_4D.csv"
     )
