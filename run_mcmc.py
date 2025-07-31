@@ -15,7 +15,7 @@ def run_mcmc(
     backend_file="chains_eta.h5",
     nwalkers=50,
     nsteps=3000,
-    ndim=4,
+    ndim=6,
     initial_guess=None,
     resume=True,
     processes=None
