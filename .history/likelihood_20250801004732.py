@@ -144,6 +144,7 @@ def log_likelihood(eta, **kwargs):
             return -np.inf
 
     return logL
+    return lp + ll
 
 
 def log_posterior(eta):
