@@ -46,7 +46,7 @@ def run():
     "xi": 0.0,
     "sigma": 0.37,
     "mu_alpha": 0.07,
-    "sigma_alpha": 0.07
+    "sigma_alpha": 0.3
     }
 
     # === 画图 ===

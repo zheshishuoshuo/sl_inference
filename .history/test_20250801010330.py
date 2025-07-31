@@ -45,29 +45,35 @@ def run():
     "beta": 2.04,
     "xi": 0.0,
     "sigma": 0.37,
-    "mu_alpha": 0.07,
-    "sigma_alpha": 0.07
-    }
+    "mu_alpha": 0.0,
+    "sigma_alpha": 0.3
+}
 
-    # === 画图 ===
-    g = sns.pairplot(df,
-                    diag_kind="kde",
-                    markers=".",
-                    plot_kws={"alpha": 0.5, "s": 10},
-                    corner=True,
-                    )
+# === 画图 ===
+g = sns.pairplot(df,
+                 diag_kind="kde",
+                 markers=".",
+                 plot_kws={"alpha": 0.5, "s": 10},
+                 corner=True,
+                 )
 
-    # === 添加真值线 ===
-    for i, param1 in enumerate(g.x_vars):
-        ax = g.axes[i, i]
-        ax.axvline(true_values[param1], color="red", linestyle="--", linewidth=1.2)
+# === 添加真值线 ===
+for i, param1 in enumerate(g.x_vars):
+    ax = g.axes[i, i]
+    ax.axvline(true_values[param1], color="red", linestyle="--", linewidth=1.2)
 
-        for j in range(i):
-            ax = g.axes[i, j]
-            ax.axvline(true_values[g.x_vars[j]], color="red", linestyle="--", linewidth=1)
-            ax.axhline(true_values[g.x_vars[i]], color="red", linestyle="--", linewidth=1)
-            ax.plot(true_values[g.x_vars[j]], true_values[g.x_vars[i]],
-                    "ro", markersize=3)
+    for j in range(i):
+        ax = g.axes[i, j]
+        ax.axvline(true_values[g.x_vars[j]], color="red", linestyle="--", linewidth=1)
+        ax.axhline(true_values[g.x_vars[i]], color="red", linestyle="--", linewidth=1)
+        ax.plot(true_values[g.x_vars[j]], true_values[g.x_vars[i]],
+                "ro", markersize=3)
+    sns.pairplot(df,
+                diag_kind="kde",
+                markers=".",
+                plot_kws={"alpha": 0.5, "s": 10},
+                corner=True,
+                 )
     plt.show()
 
 
