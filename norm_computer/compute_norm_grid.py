@@ -115,7 +115,7 @@ def build_A_phys_table_parallel_4D(muDM_grid, sigmaDM_grid, betaDM_grid, xiDM_gr
                                     filename='A_phys_table_4D.csv', nproc=None, batch_size=1000):
     if nproc is None:
         nproc = max(1, cpu_count() - 1)
-
+    filename = os.path.join(os.path.dirname(__file__), '..', 'tables', filename)
     done_set = set()
     if os.path.exists(filename):
         df_done = pd.read_csv(filename)
@@ -164,5 +164,5 @@ if __name__ == "__main__":
     build_A_phys_table_parallel_4D(
         muDM_grid, sigmaDM_grid, betaDM_grid, xiDM_grid,
         n_samples=2000,
-        filename="../tables/A_phys_table_4D.csv"
+        filename="A_phys_table_4D.csv"
     )
