@@ -2,6 +2,7 @@ from .utils import selection_function, mag_likelihood
 from .lens_model import LensModel
 from .lens_solver import solve_lens_parameters_from_obs, compute_detJ
 from .cached_A import cached_A_interp
+from .norm_computer.compute_norm_grid import logRe_of_logMsps
 from scipy.stats import norm
 import numpy as np
 # def log_prior(eta): ...
@@ -39,8 +40,15 @@ def initializer_for_pool(data_df_, logMstar_list_, detJ_list_, use_interp_):
 
 
 def log_prior(eta):
-    mu_DM, sigma_DM, mu_alpha, sigma_alpha = eta
-    if not (9 < mu_DM < 15 and 0 < sigma_DM < 5 and -0.2 < mu_alpha < 0.3 and 0.0 < sigma_alpha < 1):
+    mu0, beta, xi, sigma, mu_alpha, sigma_alpha = eta
+    if not (
+        9 < mu0 < 15
+        and 0 < sigma < 5
+        and 0 < sigma_alpha < 1
+        and -0.2 < mu_alpha < 0.3
+        and 0 < beta < 5
+        and -1 < xi < 1
+    ):
         return -np.inf
     return 0.0  # flat prior
 
@@ -49,9 +57,9 @@ def likelihood_single_fast_optimized(
     logMstar_interp=None, detJ_interp=None, use_interp=False
 ):
     xA_obs, xB_obs, logM_sps_obs, logRe_obs, m1_obs, m2_obs = di
-    mu_DM, sigma_DM, mu_alpha, sigma_alpha = eta
+    mu0, beta, xi, sigma, mu_alpha, sigma_alpha = eta
 
-    logMh_grid = np.linspace(mu_DM - 4*sigma_DM, mu_DM + 4*sigma_DM, gridN)
+    logMh_grid = np.linspace(mu0 - 4*sigma, mu0 + 4*sigma, gridN)
     logalpha_grid = np.linspace(mu_alpha - 4*sigma_alpha, mu_alpha + 4*sigma_alpha, gridN)
     Z = np.zeros((gridN, gridN))
 
@@ -78,7 +86,9 @@ def likelihood_single_fast_optimized(
 
         for j, logalpha in enumerate(logalpha_grid):
             p_Mstar = norm.pdf(logM_sps_obs, loc=logM_star - logalpha, scale=0.1)
-            p_logMh = norm.pdf(logMh, loc=mu_DM, scale=sigma_DM)
+            mu_DM_i = mu0 + beta * (logM_star - 11.4) + \
+                xi * (logRe_obs - logRe_of_logMsps(logM_star))
+            p_logMh = norm.pdf(logMh, loc=mu_DM_i, scale=sigma)
             p_logalpha = norm.pdf(logalpha, loc=mu_alpha, scale=sigma_alpha)
 
             Z[i, j] = p_Mstar * p_logMh * p_logalpha * detJ * selA * selB * p_magA * p_magB
@@ -94,13 +104,13 @@ def log_likelihood(eta, **kwargs):
     _detJ_interp_list = _context["detJ_interp_list"]
     _use_interp = _context["use_interp"]
 
-    mu_DM, sigma_DM, mu_alpha, sigma_alpha = eta
+    mu0, beta, xi, sigma, mu_alpha, sigma_alpha = eta
 
-    if sigma_DM <= 0 or sigma_alpha <= 0 or sigma_DM > 2.0 or sigma_alpha > 2.0:
+    if sigma <= 0 or sigma_alpha <= 0 or sigma > 2.0 or sigma_alpha > 2.0:
         return -np.inf
 
     try:
-        A_eta = cached_A_interp(mu_DM, sigma_DM)
+        A_eta = cached_A_interp(mu0, sigma, beta, xi)
         if not np.isfinite(A_eta) or A_eta <= 0:
             return -np.inf
     except Exception:

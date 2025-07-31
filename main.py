@@ -36,8 +36,8 @@ def main():
         backend_file="mcmc_chain100.h5",
         nwalkers=8,
         nsteps=10,
-        ndim=4,
-        initial_guess=np.array([12.5, 0.3, 0.05, 0.05]),
+        ndim=6,
+        initial_guess=np.array([12.5, 2.0, 0.0, 0.3, 0.05, 0.05]),
         processes=4
         )
 
