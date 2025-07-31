@@ -6,8 +6,8 @@ from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 from scipy.stats import norm
 from scipy.special import erf
-from lens_model import LensModel
-from lens_solver import solve_single_lens
+from ..lens_model import LensModel
+from ..lens_solver import solve_single_lens
 
 # === Utils ===
 # to check. use it to model the relation between logM_sps and logRe
