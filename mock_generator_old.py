@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from lens_properties import observed_data
+from .lens_properties import observed_data
 from tqdm import tqdm
 
 def generate_samples(n_samples, seed=None):
