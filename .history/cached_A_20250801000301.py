@@ -23,9 +23,9 @@ def load_A_phys_interpolator(filename='A_phys_table.csv'):
 prec = 'low'  # 默认精度
 
 if prec == 'low':
-    A_interp = load_A_phys_interpolator(os.path.join(os.path.dirname(__file__), 'tables', 'A_phys_table100.csv'))
+    A_interp = load_A_phys_interpolator(os.path.join(os.path.dirname(__file__), 'tables', 'A_phys_table_4D.csv'))
 elif prec == 'high':
-    A_interp = load_A_phys_interpolator(os.path.join(os.path.dirname(__file__), 'tables', 'A_phys_table1000.csv'))
+    A_interp = load_A_phys_interpolator("./tables/A_phys_table1000.csv")
 
 
 # === A_interp wrapper ===

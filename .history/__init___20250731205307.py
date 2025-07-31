@@ -11,6 +11,8 @@ from .mass_sampler import (
     logRe_given_logM,
     logMh_given_logM_logRe,
     generate_samples,
+    theoretical_logRe_pdf,
+    theoretical_logMh_pdf,
 )
 from .run_mcmc import run_mcmc
 from .likelihood import (
