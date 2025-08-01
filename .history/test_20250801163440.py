@@ -19,7 +19,7 @@ def run():
     test_filename = "chains_eta.h5"
     if os.path.exists(os.path.join(os.path.dirname(__file__),'chains', test_filename)):
         print(f"[INFO] 继续采样：读取已有文件 {test_filename}")
-    
+
     sampler = run_mcmc(
         data_df=mock_observed_data,
         logMstar_interp_list=logMstar_list,
