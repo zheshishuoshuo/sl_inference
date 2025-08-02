@@ -2,7 +2,7 @@ from .run_mcmc import run_mcmc
 from .likelihood import log_posterior
 from .interpolator import build_interp_list_for_lenses
 from .mock_generator import run_mock_simulation
-from .likelihood import log_posterior, initializer_for_pool
+from likelihood import log_posterior, initializer_for_pool
 import multiprocessing as mp
 import numpy as np
 
