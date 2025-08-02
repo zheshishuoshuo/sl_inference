@@ -16,7 +16,7 @@ def run():
     logMstar_list, detJ_list = build_interp_list_for_lenses(
         mock_observed_data, logMh_grid, zl=0.3, zs=2.0
     )
-    test_filename = "chains_eta.h5"
+    test_filename = "chains_eta1.h5"
     if os.path.exists(os.path.join(os.path.dirname(__file__),'chains', test_filename)):
         print(f"[INFO] 继续采样：读取已有文件 {test_filename}")
     
@@ -31,7 +31,7 @@ def run():
         nsteps=200,
         ndim=6,
         initial_guess=np.array([12.5, 2.0, 0.0, 0.3, 0.05, 0.05]),
-        processes=4
+        processes=8
         )
     
     samples = sampler.get_chain(flat=True, discard=0)

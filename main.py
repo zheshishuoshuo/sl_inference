@@ -2,10 +2,11 @@ from .run_mcmc import run_mcmc
 from .likelihood import log_posterior
 from .interpolator import build_interp_list_for_lenses
 from .mock_generator import run_mock_simulation
+import multiprocessing as mp
 import numpy as np
 
 def main():
-    mock_lens_data, mock_observed_data = run_mock_simulation(n_samples=1)
+    mock_lens_data, mock_observed_data = run_mock_simulation(n_samples=100)
     logMh_grid = np.linspace(11.5, 14.0, 100)
 
     logMstar_list, detJ_list = build_interp_list_for_lenses(
@@ -21,11 +22,11 @@ def main():
         use_interp=True,
         log_posterior_func=log_posterior,
         backend_file="mcmc_chain100.h5",
-        nwalkers=8,
-        nsteps=10,
+        nwalkers=18,
+        nsteps=5000,
         ndim=6,
         initial_guess=np.array([12.5, 2.0, 0.0, 0.3, 0.05, 0.05]),
-        processes=4
+        processes=mp.cpu_count()
         )
 
 

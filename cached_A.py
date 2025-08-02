@@ -39,11 +39,11 @@ prec = 'low'  # 默认精度
 
 if prec == 'low':
     A_interp = load_A_phys_interpolator_4d(
-        os.path.join(os.path.dirname(__file__), 'tables', 'A_phys_table_4D.csv')
+        os.path.join(os.path.dirname(__file__), 'tables', 'A_phys_table_4D_new.csv')
     )
 elif prec == 'high':
     A_interp = load_A_phys_interpolator_4d(
-        os.path.join(os.path.dirname(__file__), 'tables', 'A_phys_table_4D.csv')
+        os.path.join(os.path.dirname(__file__), 'tables', 'A_phys_table_4D_new.csv')
     )
 
 
