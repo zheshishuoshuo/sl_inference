@@ -4,7 +4,7 @@ from .sl_cosmology import Dang, G, M_Sun, Mpc, c, rhoc, yr
 from .sl_profiles import deVaucouleurs as deV, nfw
 from scipy.interpolate import interp1d, splev, splint, splrep
 from scipy.optimize import brentq, leastsq, minimize_scalar
-from scipy.integrate import quad
+from scipy.integrate import quad, cumulative_trapezoid
 
 
 @njit
@@ -91,7 +91,8 @@ class LensModel:
         self.kappaR_spline = splrep(self.Rkpc, kappa_array * self.Rkpc)  # for gamma
 
         self.kappaR_vals = splev(self.Rkpc, self.kappaR_spline)
-        self.kappaR_int = np.array([splint(0., R, self.kappaR_spline) for R in self.Rkpc])
+        # 使用累积梯形积分代替逐点 spline 积分，计算 ∫ kappa(R)·R dR
+        self.kappaR_int = cumulative_trapezoid(self.kappaR_vals, self.Rkpc, initial=0.0)
 
         kappa_star = self.kappa_star(self.Rkpc)
         m2d_star = self.M_star * deV.fast_M2d(self.Rkpc / self.Re)
