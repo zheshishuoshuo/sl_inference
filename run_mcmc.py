@@ -23,6 +23,8 @@ def run_mcmc(
     if processes is None:
         processes = max(1, int(multiprocessing.cpu_count() // 1.5))
 
+    backend_file = os.path.join(os.path.dirname(__file__), 'chains', backend_file)
+
     if resume and os.path.exists(backend_file):
         print(f"[INFO] 继续采样：读取已有文件 {backend_file}")
         backend = HDFBackend(backend_file, read_only=False)

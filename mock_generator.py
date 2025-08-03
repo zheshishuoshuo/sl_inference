@@ -76,8 +76,14 @@ def simulate_single_lens(i, samples, beta_samp, logalpha_sps_sample, mag_source,
 def run_mock_simulation(n_samples, mag_source=26.0, maximum_magnitude=26.5,
                         zl=0.3, zs=2.0, if_source=False, process=None):
     beta_samp = np.random.rand(n_samples)**0.5
-    alpha_sps = np.random.normal(loc=1.2, scale=0.2, size=n_samples)
-    logalpha_sps_sample = np.log10(alpha_sps)
+    # alpha_sps = np.random.normal(loc=1.2, scale=0.2, size=n_samples)
+    # logalpha_sps_sample = np.log10(alpha_sps)
+    logalpha_sps_sample = np.random.normal(loc=0.1, scale=0.05, size=n_samples)  # 模拟 logalpha_sps
+
+
+
+
+    
     samples = generate_samples(n_samples)
 
     if process is None or process == 0:
