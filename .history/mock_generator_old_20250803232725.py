@@ -37,7 +37,7 @@ def run_mock_simulation(n_samples, mag_source=26.0, maximum_magnitude=26.5, zl=0
     beta_scalefree_samp = np.random.rand(n_samples)**0.5
     # alpha_sps = np.random.normal(loc=1.2, scale=0.2, size=n_samples)
     # logalpha_sps_sample = np.log10(alpha_sps)
-    logalpha_sps_sample = np.random.normal(loc=0.1, scale=0.05, size=n_samples)
+    log
     samples = generate_samples(n_samples)
 
     lens_results = []

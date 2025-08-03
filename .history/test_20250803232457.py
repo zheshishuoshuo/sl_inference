@@ -32,7 +32,7 @@ def run():
         nwalkers=10,
         nsteps=100,
         ndim=5,
-        initial_guess=np.array([12.91, 2.0, 0.37, 0.07, 0.07]),
+        initial_guess=np.array([12.5, 2.0, 0.3, 0.05, 0.05]),
         processes=8
         )
 
