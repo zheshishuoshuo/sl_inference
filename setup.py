@@ -13,4 +13,5 @@ extensions = [
 setup(
     name="sl_inference",
     ext_modules=cythonize(extensions, language_level=3),
+    install_requires=["numba"],
 )
