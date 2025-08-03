@@ -58,14 +58,28 @@ def log_prior(eta):
     """
     mu0, beta, sigma, mu_alpha, sigma_alpha = eta
     if not (
-        9 < mu0 < 15
-        and 0 < sigma < 5
+        10 < mu0 < 15
+        and 0 < sigma < 1
         and 0 < sigma_alpha < 1
-        and -0.2 < mu_alpha < 0.3
+        and 0 < mu_alpha < 1
         and 0 < beta < 5
     ):
         return -np.inf
     return 0.0  # flat prior
+
+
+    # if not (
+    #     12 < mu0 < 14
+    #     and 0 < sigma < 0.7
+    #     and 0 < sigma_alpha < 0.3
+    #     and 0 < mu_alpha < 0.3
+    #     and 0 < beta < 5
+    # ):
+    #     return -np.inf
+    # return 0.0  # flat prior
+
+
+
 
 def likelihood_single_fast_optimized(
     di, eta, gridN=35, zl=0.3, zs=2.0, ms=26.0, sigma_m=0.1, m_lim=26.5,

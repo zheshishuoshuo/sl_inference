@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def run():
-    mock_lens_data, mock_observed_data = run_mock_simulation(n_samples=40)
+    mock_lens_data, mock_observed_data = run_mock_simulation(n_samples=10)
     logMh_grid = np.linspace(11.5, 14.0, 100)
 
     logMstar_list, detJ_list = build_interp_list_for_lenses(
         mock_observed_data, logMh_grid, zl=0.3, zs=2.0
     )
-    test_filename = "chains_eta4.h5"
+    test_filename = "chains_eta3.h5"
     if os.path.exists(os.path.join(os.path.dirname(__file__),'chains', test_filename)):
         print(f"[INFO] 继续采样：读取已有文件 {test_filename}")
     
@@ -30,13 +30,13 @@ def run():
         log_posterior_func=log_posterior,
         backend_file=test_filename,
         nwalkers=10,
-        nsteps=100,
+        nsteps=1000,
         ndim=5,
-        initial_guess=np.array([12.91, 2.0, 0.37, 0.1, 0.05]),
+        initial_guess=np.array([12.5, 2.2, 0.5, 0.2, 0.1]),
         processes=8
         )
 
-    samples = sampler.get_chain(flat=True, discard=0)
+    samples = sampler.get_chain(flat=True, discard=1500)
     df = pd.DataFrame(samples, columns=[
         "mu0", "beta", "sigma", "mu_alpha", "sigma_alpha"
     ])
