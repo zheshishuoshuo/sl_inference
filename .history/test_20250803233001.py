@@ -47,8 +47,8 @@ def run():
     "mu0": 12.91,
     "beta": 2.04,
     "sigma": 0.37,
-    "mu_alpha": 0.1,
-    "sigma_alpha": 0.05
+    "mu_alpha": 0.07,
+    "sigma_alpha": 0.07
     }
 
     # === 画图 ===

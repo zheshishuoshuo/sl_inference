@@ -32,7 +32,7 @@ def run():
         nwalkers=10,
         nsteps=100,
         ndim=5,
-        initial_guess=np.array([12.91, 2.0, 0.37, 0.1, 0.05]),
+        initial_guess=np.array([12.91, 2.0, 0.37, 0.1, 0.07]),
         processes=8
         )
 
@@ -47,8 +47,8 @@ def run():
     "mu0": 12.91,
     "beta": 2.04,
     "sigma": 0.37,
-    "mu_alpha": 0.1,
-    "sigma_alpha": 0.05
+    "mu_alpha": 0.07,
+    "sigma_alpha": 0.07
     }
 
     # === 画图 ===
