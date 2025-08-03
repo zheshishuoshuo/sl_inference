@@ -5,6 +5,45 @@ import numpy as np
 from .sl_profiles import nfw, deVaucouleurs as deV
 from scipy.optimize import brentq
 
+
+def precompute_sigma_spline(logM_halo, zl, rs=10.0):
+    """Pre-compute the NFW surface-density grid for a halo mass.
+
+    Parameters
+    ----------
+    logM_halo : float
+        Base-10 logarithm of the halo mass in solar masses.
+    zl : float
+        Lens redshift.
+    rs : float, optional
+        NFW scale radius in kpc.  Defaults to ``10.0`` to match the previous
+        implementation.
+
+    Returns
+    -------
+    tuple of ``(Rkpc, Sigma, sigmaR_spline)`` where
+
+    ``Rkpc``
+        Radius grid in kpc.
+    ``Sigma``
+        Surface mass density evaluated on ``Rkpc``.
+    ``sigmaR_spline``
+        Spline representation of ``Sigma(R) * R`` suitable for fast
+        integration in the pure Python fallback.
+    """
+
+    M_halo = 10 ** logM_halo  # [Msun]
+    rhoc_z = rhoc(zl)  # [Msun / Mpc^3]
+    r200 = (M_halo * 3.0 / (4 * np.pi * 200 * rhoc_z)) ** (1.0 / 3.0) * 1000.0
+    nfw_norm = M_halo / nfw.M3d(r200, rs)
+
+    R2d = np.logspace(-3, 2, 1001)
+    Rkpc = R2d * rs  # [kpc]
+    Sigma = nfw_norm * nfw.Sigma(Rkpc, rs)  # [Msun / kpc^2]
+    sigmaR_spline = splrep(Rkpc, Sigma * Rkpc)
+
+    return Rkpc, Sigma, sigmaR_spline
+
 # Try to import the Cython-accelerated routines.  If the extension is not
 # available (e.g., on platforms without a C compiler), fall back to the pure
 # Python implementations below.
@@ -53,33 +92,38 @@ def solve_single_lens(model, beta_unit):
     xB = brentq(lens_equation, -einstein_radius, -caustic_max_at_lens_plane)
     return xA, xB
 
-def solve_lens_parameters_from_obs(xA_obs, xB_obs, logRe_obs, logM_halo, zl, zs):
+def solve_lens_parameters_from_obs(
+    xA_obs, xB_obs, logRe_obs, logM_halo, zl, zs, precomputed=None
+):
 
-    Re = 10**logRe_obs  # [kpc]
-    rs = 10.0  # [kpc] NFW scale radius
-    M_halo = 10**logM_halo  # [Msun]
+    Re = 10 ** logRe_obs  # [kpc]
+
+    # Pre-compute or unpack the NFW grid for this halo mass.
+    if precomputed is None:
+        Rkpc, Sigma, sigmaR_spline = precompute_sigma_spline(logM_halo, zl)
+    else:
+        Rkpc, Sigma, sigmaR_spline = precomputed
 
     dd = Dang(zl)  # [Mpc]
     ds = Dang(zs)  # [Mpc]
     dds = Dang(zs, zl)  # [Mpc]
-    kpc = Mpc / 1000.  # [kpc/Mpc]
-    s_cr = c**2 / (4*np.pi*G) * ds/dds/dd / Mpc / M_Sun * kpc**2  # [Msun / kpc^2]
-    rhoc_z = rhoc(zl)  # [Msun / Mpc^3]
-    r200 = (M_halo * 3./(4*np.pi*200*rhoc_z))**(1./3.) * 1000.  # [kpc]
-    nfw_norm = M_halo / nfw.M3d(r200, rs)
-    R2d = np.logspace(-3, 2, 1001)  # [R/Re] 无单位
-    Rkpc = R2d * rs  # [kpc]
-    Sigma = nfw_norm * nfw.Sigma(Rkpc, rs)  # [Msun / kpc^2]
-    # sigma_spline = splrep(Rkpc, Sigma)  # Sigma(R)
-    sigmaR_spline = splrep(Rkpc, Sigma * Rkpc)  # Sigma(R) * R
+    kpc = Mpc / 1000.0  # [kpc/Mpc]
+    s_cr = c**2 / (4 * np.pi * G) * ds / dds / dd / Mpc / M_Sun * kpc**2
 
-    def alpha_star_unit(x):
-        m2d_star =  deV.fast_M2d(abs(x)/Re)        # [Msun]
-        return m2d_star / (np.pi * x * s_cr) 
-    
-    def alpha_halo(x):
-        m2d_halo = 2*np.pi * splint(0., abs(x), sigmaR_spline)
-        return m2d_halo / (np.pi * x * s_cr)
+    if _CYTHON_AVAILABLE:
+        def alpha_star_unit(x):
+            return alpha_star_unit_cy(x, Re, s_cr)
+
+        def alpha_halo(x):
+            return alpha_halo_cy(x, Rkpc, Sigma, s_cr)
+    else:  # Python fallbacks using spline integration
+        def alpha_star_unit(x):
+            m2d_star = deV.fast_M2d(abs(x) / Re)
+            return m2d_star / (np.pi * x * s_cr)
+
+        def alpha_halo(x):
+            m2d_halo = 2 * np.pi * splint(0.0, abs(x), sigmaR_spline)
+            return m2d_halo / (np.pi * x * s_cr)
 
     M_star_solved = ((xA_obs -xB_obs) + alpha_halo(xB_obs)-alpha_halo(xA_obs))/ (alpha_star_unit(xA_obs) - alpha_star_unit(xB_obs))  # [Msun]
     beta_solved = -(alpha_star_unit(xA_obs)*(xB_obs-alpha_halo(xB_obs)) -alpha_star_unit(xB_obs)*(xA_obs-alpha_halo(xA_obs))) / (alpha_star_unit(xB_obs) - alpha_star_unit(xA_obs))  # [kpc]
@@ -102,11 +146,19 @@ def solve_lens_parameters_from_obs(xA_obs, xB_obs, logRe_obs, logM_halo, zl, zs)
 
 
 def compute_detJ(theta1_obs, theta2_obs, logRe_obs, logMh, zl=0.3, zs=2.0):
-    delta = 1e-4  
+    delta = 1e-4
 
-    logM0, beta0 = solve_lens_parameters_from_obs(theta1_obs, theta2_obs, logRe_obs, logMh, zl, zs)
-    logM1, beta1 = solve_lens_parameters_from_obs(theta1_obs + delta, theta2_obs, logRe_obs, logMh, zl, zs)
-    logM2, beta2 = solve_lens_parameters_from_obs(theta1_obs, theta2_obs + delta, logRe_obs, logMh, zl, zs)
+    precomputed = precompute_sigma_spline(logMh, zl)
+
+    logM0, beta0 = solve_lens_parameters_from_obs(
+        theta1_obs, theta2_obs, logRe_obs, logMh, zl, zs, precomputed
+    )
+    logM1, beta1 = solve_lens_parameters_from_obs(
+        theta1_obs + delta, theta2_obs, logRe_obs, logMh, zl, zs, precomputed
+    )
+    logM2, beta2 = solve_lens_parameters_from_obs(
+        theta1_obs, theta2_obs + delta, logRe_obs, logMh, zl, zs, precomputed
+    )
 
     dlogM_dtheta1 = (logM1 - logM0) / delta
     dlogM_dtheta2 = (logM2 - logM0) / delta

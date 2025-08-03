@@ -4,7 +4,12 @@ Tools for modelling strong gravitational lenses and performing inference on thei
 module provides convenient imports for the most commonly used classes and functions."""
 
 from .lens_model import LensModel
-from .lens_solver import solve_single_lens, solve_lens_parameters_from_obs, compute_detJ
+from .lens_solver import (
+    solve_single_lens,
+    solve_lens_parameters_from_obs,
+    compute_detJ,
+    precompute_sigma_spline,
+)
 from .lens_properties import lens_properties, observed_data
 from .mass_sampler import (
     mstar_gene,
@@ -28,6 +33,7 @@ __all__ = [
     "solve_single_lens",
     "solve_lens_parameters_from_obs",
     "compute_detJ",
+    "precompute_sigma_spline",
     "lens_properties",
     "observed_data",
     "mstar_gene",
