@@ -81,48 +81,57 @@ def likelihood_single_fast_optimized(
         mu_alpha - 4 * sigma_alpha, mu_alpha + 4 * sigma_alpha, gridN
     )
 
-    logM_star_arr = np.empty(gridN)
-    detJ_arr = np.empty(gridN)
-    selA_arr = np.empty(gridN)
-    selB_arr = np.empty(gridN)
-    p_magA_arr = np.empty(gridN)
-    p_magB_arr = np.empty(gridN)
-    valid_mask = np.ones(gridN, dtype=bool)
+    # --- halo mass grid dependent quantities ---
+    if use_interp:
+        logM_star_arr = np.asarray(logMstar_interp(logMh_grid), dtype=float)
+        detJ_arr = np.asarray(detJ_interp(logMh_grid), dtype=float)
+        valid_mask = np.ones(gridN, dtype=bool)
+    else:
+        logM_star_arr = np.empty(gridN)
+        detJ_arr = np.empty(gridN)
+        valid_mask = np.ones(gridN, dtype=bool)
+        for i, logMh in enumerate(logMh_grid):
+            try:
+                logM_star_arr[i], _ = _solve_lens_parameters_cached(
+                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
+                )
+                detJ_arr[i] = _compute_detJ_cached(
+                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
+                )
+            except Exception:
+                valid_mask[i] = False
+                logM_star_arr[i] = 0.0
+                detJ_arr[i] = 0.0
 
-    for i, logMh in enumerate(logMh_grid):
+    base_model = LensModel.create_base(logRe_obs, zl, zs)
+
+    muA_arr = np.empty(gridN)
+    muB_arr = np.empty(gridN)
+
+    for i, (logMh, logM_star) in enumerate(zip(logMh_grid, logM_star_arr)):
+        if not valid_mask[i]:
+            muA_arr[i] = 0.0
+            muB_arr[i] = 0.0
+            continue
         try:
-            if use_interp:
-                logM_star = float(logMstar_interp(logMh))
-                detJ = float(detJ_interp(logMh))
-            else:
-                logM_star, _ = _solve_lens_parameters_cached(
-                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
-                )
-                detJ = _compute_detJ_cached(
-                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
-                )
-            model = LensModel(
-                logM_star=logM_star, logM_halo=logMh, logRe=logRe_obs, zl=zl, zs=zs
-            )
-            muA = model.mu_from_rt(xA_obs)
-            muB = model.mu_from_rt(xB_obs)
-            selA = selection_function(muA, m_lim, ms, sigma_m)
-            selB = selection_function(muB, m_lim, ms, sigma_m)
-            p_magA = mag_likelihood(m1_obs, muA, ms, sigma_m)
-            p_magB = mag_likelihood(m2_obs, muB, ms, sigma_m)
+            base_model.set_masses(float(logM_star), float(logMh))
+            muA_arr[i] = base_model.mu_from_rt(xA_obs)
+            muB_arr[i] = base_model.mu_from_rt(xB_obs)
         except Exception:
             valid_mask[i] = False
-            logM_star = 0.0
-            detJ = 0.0
-            selA = selB = 0.0
-            p_magA = p_magB = 0.0
+            muA_arr[i] = 0.0
+            muB_arr[i] = 0.0
+            detJ_arr[i] = 0.0
 
-        logM_star_arr[i] = logM_star
-        detJ_arr[i] = detJ
-        selA_arr[i] = selA
-        selB_arr[i] = selB
-        p_magA_arr[i] = p_magA
-        p_magB_arr[i] = p_magB
+    selA_arr = selection_function(muA_arr, m_lim, ms, sigma_m)
+    selB_arr = selection_function(muB_arr, m_lim, ms, sigma_m)
+    p_magA_arr = mag_likelihood(m1_obs, muA_arr, ms, sigma_m)
+    p_magB_arr = mag_likelihood(m2_obs, muB_arr, ms, sigma_m)
+
+    selA_arr = np.where(valid_mask, selA_arr, 0.0)
+    selB_arr = np.where(valid_mask, selB_arr, 0.0)
+    p_magA_arr = np.where(valid_mask, p_magA_arr, 0.0)
+    p_magB_arr = np.where(valid_mask, p_magB_arr, 0.0)
 
     p_logalpha_arr = norm.pdf(logalpha_grid, loc=mu_alpha, scale=sigma_alpha)
 

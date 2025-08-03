@@ -55,16 +55,60 @@ class LensModel:
     #                         zl=zl, zs=zs)
 
     def __init__(self, logM_star, logM_halo, logRe, zl, zs):
+        """Create a full :class:`LensModel` instance.
+
+        The cosmology-dependent geometry (``zl``, ``zs`` and ``logRe``) is
+        initialised first and cached.  The masses are then set via
+        :meth:`set_masses`, allowing them to be updated later without
+        recomputing the cosmological factors.
+        """
+
+        self._init_geometry(logRe, zl, zs)
+        self.set_masses(logM_star, logM_halo)
+
+    @classmethod
+    def create_base(cls, logRe, zl, zs):
+        """Create a base model with geometry fixed but without masses.
+
+        This helper is useful when repeatedly evaluating models at different
+        ``logM_star`` or ``logM_halo`` values.  The returned instance can be
+        updated in-place using :meth:`set_masses`.
+        """
+
+        obj = cls.__new__(cls)
+        obj._init_geometry(logRe, zl, zs)
+        return obj
+
+    # ------------------------------------------------------------------
+    def _init_geometry(self, logRe, zl, zs):
+        """Initialise cosmology-related quantities.
+
+        This part is independent of the stellar/halo masses and therefore can
+        be reused when exploring a grid of mass parameters.
+        """
+
         self.zl, self.zs = zl, zs
-        self.logM_star = logM_star  # [Msun]
-        self.logM_halo = logM_halo  # [Msun]
         self.logRe = logRe            # [kpc]
-        self.M_star = 10**logM_star           # [Msun]
-        self.M_halo = 10**logM_halo           # [Msun]
-        self.Re = 10**logRe                   # [kpc]
-        self._setup_cosmology()               # 计算 s_cr 等
-        self._setup_profiles()                # NFW + deV 分布
-        self._setup_splines()                 # 插值缓存
+        self.Re = 10 ** logRe         # [kpc]
+        self._setup_cosmology()       # 计算 s_cr 等
+
+    def set_masses(self, logM_star, logM_halo):
+        """Update the stellar and halo masses of the model.
+
+        Parameters
+        ----------
+        logM_star : float
+            Base-10 logarithm of the stellar mass.
+        logM_halo : float
+            Base-10 logarithm of the halo mass.
+        """
+
+        self.logM_star = logM_star
+        self.logM_halo = logM_halo
+        self.M_star = 10 ** logM_star           # [Msun]
+        self.M_halo = 10 ** logM_halo           # [Msun]
+        self._setup_profiles()                  # NFW + deV 分布
+        self._setup_splines()                   # 插值缓存
 
     def _setup_cosmology(self):
         dd = Dang(self.zl)                    # [Mpc]
