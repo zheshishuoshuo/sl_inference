@@ -1,9 +1,42 @@
 import numpy as np
+from numba import njit
 from .sl_cosmology import Dang, G, M_Sun, Mpc, c, rhoc, yr
 from .sl_profiles import deVaucouleurs as deV, nfw
 from scipy.interpolate import interp1d, splev, splint, splrep
 from scipy.optimize import brentq, leastsq, minimize_scalar
 from scipy.integrate import quad
+
+
+@njit
+def _shear_numba(R, Rkpc, kappaR_vals, kappaR_int, gamma_star_vals):
+    if R == 0.0:
+        return 0.0
+    n = Rkpc.shape[0]
+    if R <= Rkpc[0]:
+        idx = 0
+    elif R >= Rkpc[n-1]:
+        idx = n - 2
+    else:
+        idx = np.searchsorted(Rkpc, R) - 1
+
+    R0 = Rkpc[idx]
+    R1 = Rkpc[idx + 1]
+    t = (R - R0) / (R1 - R0)
+
+    kR0 = kappaR_vals[idx]
+    kR1 = kappaR_vals[idx + 1]
+    kR_R = kR0 + t * (kR1 - kR0)
+    integral = kappaR_int[idx] + 0.5 * (kR0 + kR_R) * (R - R0)
+
+    mean_kappa_halo = 2.0 * integral / (R * R)
+    kappa_halo_R = kR_R / R
+    gamma_halo = mean_kappa_halo - kappa_halo_R
+
+    g0 = gamma_star_vals[idx]
+    g1 = gamma_star_vals[idx + 1]
+    gamma_star = g0 + t * (g1 - g0)
+
+    return gamma_halo + gamma_star
 
 
 class LensModel:
@@ -57,6 +90,14 @@ class LensModel:
         kappa_array = splev(self.Rkpc, self.sigma_spline) / self.s_cr
         self.kappaR_spline = splrep(self.Rkpc, kappa_array * self.Rkpc)  # for gamma
 
+        self.kappaR_vals = splev(self.Rkpc, self.kappaR_spline)
+        self.kappaR_int = np.array([splint(0., R, self.kappaR_spline) for R in self.Rkpc])
+
+        kappa_star = self.kappa_star(self.Rkpc)
+        m2d_star = self.M_star * deV.fast_M2d(self.Rkpc / self.Re)
+        mean_kappa_star = m2d_star / (np.pi * self.Rkpc**2 * self.s_cr)
+        self.gamma_star_vals = mean_kappa_star - kappa_star
+
     def alpha_theta(self, theta):  # [arcsec] → [arcsec]
         x = arcsec_to_kpc(theta, self.zl, Dang)        # [kpc]
         alphakpc = self.alpha(x)                       # [kpc]
@@ -78,13 +119,12 @@ class LensModel:
         sigma_star = self.M_star * deV.Sigma(abs(x), self.Re)  # [Msun / kpc^2]
         return sigma_star / self.s_cr
 
+    def shear(self, x):
+        R = abs(x)
+        return _shear_numba(R, self.Rkpc, self.kappaR_vals, self.kappaR_int, self.gamma_star_vals)
 
     def gamma(self, x):
-        R = abs(x)
-        integrand = lambda r: self.kappa(r) * r
-        integral, _ = quad(integrand, 0, R, epsabs=1e-8, epsrel=1e-8)
-        mean_kappa = 2 * integral / R**2
-        return mean_kappa - self.kappa(R)
+        return self.shear(x)
 
 
 
@@ -124,7 +164,7 @@ class LensModel:
         μ = 1 / [ (1 - κ)^2 - γ^2 ]
         """
         kappa_val = self.kappa(x)
-        gamma_val = self.gamma(x)
+        gamma_val = self.shear(x)
         denom = (1. - kappa_val)**2 - gamma_val**2
         if denom == 0:
             return np.inf
