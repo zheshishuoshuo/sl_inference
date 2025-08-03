@@ -1,5 +1,5 @@
 from .lens_model import LensModel
-from scipy.interpolate import splrep, splint
+from scipy.interpolate import splrep, splint, splev
 from .sl_cosmology import Dang, Mpc, c, G, M_Sun, rhoc
 import numpy as np
 from .sl_profiles import nfw, deVaucouleurs as deV
@@ -146,25 +146,104 @@ def solve_lens_parameters_from_obs(
 
 
 def compute_detJ(theta1_obs, theta2_obs, logRe_obs, logMh, zl=0.3, zs=2.0):
-    delta = 1e-4
+    """Compute the Jacobian determinant of (logM*, beta) with respect to
+    the observed image positions ``theta1_obs`` and ``theta2_obs``.
 
-    precomputed = precompute_sigma_spline(logMh, zl)
+    This routine evaluates analytic derivatives for ``logM_star`` and
+    ``beta`` using closed-form expressions, avoiding multiple calls to
+    :func:`solve_lens_parameters_from_obs` with finite differences.
+    """
 
-    logM0, beta0 = solve_lens_parameters_from_obs(
-        theta1_obs, theta2_obs, logRe_obs, logMh, zl, zs, precomputed
+    # Pre-compute NFW surface density grid for this halo mass
+    Rkpc, Sigma, sigmaR_spline = precompute_sigma_spline(logMh, zl)
+
+    # Lens and source geometry
+    Re = 10 ** logRe_obs  # [kpc]
+    dd = Dang(zl)
+    ds = Dang(zs)
+    dds = Dang(zs, zl)
+    kpc = Mpc / 1000.0
+    s_cr = c**2 / (4 * np.pi * G) * ds / dds / dd / Mpc / M_Sun * kpc**2
+
+    # Deflection profiles and their derivatives
+    def alpha_star_unit(x):
+        m2d_star = deV.fast_M2d(abs(x) / Re)
+        if x == 0:
+            return 0.0
+        return m2d_star / (np.pi * x * s_cr)
+
+    def alpha_star_unit_deriv(x):
+        if x == 0:
+            return 0.0
+        y = abs(x) / Re
+        m2d_star = deV.fast_M2d(y)
+        m2d_prime = splev(y, deV.deV_M2d_spline, der=1)
+        return (y * m2d_prime - m2d_star) / (np.pi * x * x * s_cr)
+
+    def alpha_halo(x):
+        m2d_halo = 2 * np.pi * splint(0.0, abs(x), sigmaR_spline)
+        if x == 0:
+            return 0.0
+        return m2d_halo / (np.pi * x * s_cr)
+
+    def alpha_halo_deriv(x):
+        if x == 0:
+            return 0.0
+        absx = abs(x)
+        m2d_halo = 2 * np.pi * splint(0.0, absx, sigmaR_spline)
+        sigma_abs = np.interp(absx, Rkpc, Sigma)
+        return (2 * np.pi * sigma_abs * absx - m2d_halo) / (
+            np.pi * x * x * s_cr
+        )
+
+    # Evaluate profiles at the observed image positions
+    A1 = alpha_star_unit(theta1_obs)
+    A2 = alpha_star_unit(theta2_obs)
+    H1 = alpha_halo(theta1_obs)
+    H2 = alpha_halo(theta2_obs)
+
+    # Solve for M_star and beta using closed-form expressions
+    num_M = (theta1_obs - theta2_obs) + H2 - H1
+    denom = A1 - A2
+    M_star = num_M / denom
+    if M_star <= 0:
+        raise ValueError(f"Invalid M_star = {M_star}, must be > 0")
+    logM_star = np.log10(M_star)
+
+    num_beta = A1 * (theta2_obs - H2) - A2 * (theta1_obs - H1)
+    beta = num_beta / denom
+
+    # Derivatives of deflection profiles
+    A1p = alpha_star_unit_deriv(theta1_obs)
+    A2p = alpha_star_unit_deriv(theta2_obs)
+    H1p = alpha_halo_deriv(theta1_obs)
+    H2p = alpha_halo_deriv(theta2_obs)
+
+    # Derivatives of M_star
+    dnumM_dtheta1 = 1 - H1p
+    dnumM_dtheta2 = -1 + H2p
+    ddenom_dtheta1 = A1p
+    ddenom_dtheta2 = -A2p
+
+    dM_dtheta1 = (dnumM_dtheta1 * denom - num_M * ddenom_dtheta1) / denom ** 2
+    dM_dtheta2 = (dnumM_dtheta2 * denom - num_M * ddenom_dtheta2) / denom ** 2
+
+    dlogM_dtheta1 = dM_dtheta1 / (M_star * np.log(10))
+    dlogM_dtheta2 = dM_dtheta2 / (M_star * np.log(10))
+
+    # Derivatives of beta
+    dnumB_dtheta1 = A1p * (theta2_obs - H2) - A2 * (1 - H1p)
+    dnumB_dtheta2 = A1 * (1 - H2p) - A2p * (theta1_obs - H1)
+
+    dbeta_dtheta1 = (
+        dnumB_dtheta1 * denom - num_beta * ddenom_dtheta1
+    ) / denom ** 2
+    dbeta_dtheta2 = (
+        dnumB_dtheta2 * denom - num_beta * ddenom_dtheta2
+    ) / denom ** 2
+
+    J = np.array(
+        [[dlogM_dtheta1, dlogM_dtheta2], [dbeta_dtheta1, dbeta_dtheta2]]
     )
-    logM1, beta1 = solve_lens_parameters_from_obs(
-        theta1_obs + delta, theta2_obs, logRe_obs, logMh, zl, zs, precomputed
-    )
-    logM2, beta2 = solve_lens_parameters_from_obs(
-        theta1_obs, theta2_obs + delta, logRe_obs, logMh, zl, zs, precomputed
-    )
 
-    dlogM_dtheta1 = (logM1 - logM0) / delta
-    dlogM_dtheta2 = (logM2 - logM0) / delta
-    dbeta_dtheta1 = (beta1 - beta0) / delta
-    dbeta_dtheta2 = (beta2 - beta0) / delta
-
-    J = np.array([[dlogM_dtheta1, dlogM_dtheta2],
-                  [dbeta_dtheta1, dbeta_dtheta2]])
     return np.abs(np.linalg.det(J))
