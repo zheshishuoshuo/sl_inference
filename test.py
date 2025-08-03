@@ -29,14 +29,14 @@ def run():
         backend_file=test_filename,
         nwalkers=12,
         nsteps=200,
-        ndim=6,
-        initial_guess=np.array([12.5, 2.0, 0.0, 0.3, 0.05, 0.05]),
+        ndim=5,
+        initial_guess=np.array([12.5, 2.0, 0.3, 0.05, 0.05]),
         processes=8
         )
-    
+
     samples = sampler.get_chain(flat=True, discard=0)
     df = pd.DataFrame(samples, columns=[
-        "mu0", "beta", "xi", "sigma", "mu_alpha", "sigma_alpha"
+        "mu0", "beta", "sigma", "mu_alpha", "sigma_alpha"
     ])
     print(f"[INFO] 采样完成，样本数量: {len(samples)}")
 
@@ -44,7 +44,6 @@ def run():
     true_values = {
     "mu0": 12.91,
     "beta": 2.04,
-    "xi": 0.0,
     "sigma": 0.37,
     "mu_alpha": 0.07,
     "sigma_alpha": 0.07
