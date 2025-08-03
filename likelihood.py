@@ -40,14 +40,20 @@ def initializer_for_pool(data_df_, logMstar_list_, detJ_list_, use_interp_):
 
 
 def log_prior(eta):
-    mu0, beta, xi, sigma, mu_alpha, sigma_alpha = eta
+    """Flat prior for the five inference parameters.
+
+    The parameter ``xi`` is treated as a known hyper-parameter during
+    inference and is fixed to zero.  Consequently it is not part of the
+    ``eta`` vector any more.  The remaining parameters are checked only for
+    broad physical bounds.
+    """
+    mu0, beta, sigma, mu_alpha, sigma_alpha = eta
     if not (
         9 < mu0 < 15
         and 0 < sigma < 5
         and 0 < sigma_alpha < 1
         and -0.2 < mu_alpha < 0.3
         and 0 < beta < 5
-        and -1 < xi < 1
     ):
         return -np.inf
     return 0.0  # flat prior
@@ -57,7 +63,8 @@ def likelihood_single_fast_optimized(
     logMstar_interp=None, detJ_interp=None, use_interp=False
 ):
     xA_obs, xB_obs, logM_sps_obs, logRe_obs, m1_obs, m2_obs = di
-    mu0, beta, xi, sigma, mu_alpha, sigma_alpha = eta
+    mu0, beta, sigma, mu_alpha, sigma_alpha = eta
+    xi = 0.0
 
     logMh_grid = np.linspace(mu0 - 4*sigma, mu0 + 4*sigma, gridN)
     logalpha_grid = np.linspace(mu_alpha - 4*sigma_alpha, mu_alpha + 4*sigma_alpha, gridN)
@@ -86,8 +93,7 @@ def likelihood_single_fast_optimized(
 
         for j, logalpha in enumerate(logalpha_grid):
             p_Mstar = norm.pdf(logM_sps_obs, loc=logM_star - logalpha, scale=0.1)
-            mu_DM_i = mu0 + beta * (logM_star - 11.4) + \
-                xi * (logRe_obs - logRe_of_logMsps(logM_star))
+            mu_DM_i = mu0 + beta * (logM_star - 11.4)
             p_logMh = norm.pdf(logMh, loc=mu_DM_i, scale=sigma)
             p_logalpha = norm.pdf(logalpha, loc=mu_alpha, scale=sigma_alpha)
 
@@ -104,7 +110,8 @@ def log_likelihood(eta, **kwargs):
     _detJ_interp_list = _context["detJ_interp_list"]
     _use_interp = _context["use_interp"]
 
-    mu0, beta, xi, sigma, mu_alpha, sigma_alpha = eta
+    mu0, beta, sigma, mu_alpha, sigma_alpha = eta
+    xi = 0.0
 
     if sigma <= 0 or sigma_alpha <= 0 or sigma > 2.0 or sigma_alpha > 2.0:
         return -np.inf
