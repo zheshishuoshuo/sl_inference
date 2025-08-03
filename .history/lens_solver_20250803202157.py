@@ -69,7 +69,7 @@ def solve_lens_parameters_from_obs(xA_obs, xB_obs, logRe_obs, logM_halo, zl, zs)
 
 
 def compute_detJ(theta1_obs, theta2_obs, logRe_obs, logMh, zl=0.3, zs=2.0):
-    delta = 1e-4  
+    delta = 1e-4  # 
 
     logM0, beta0 = solve_lens_parameters_from_obs(theta1_obs, theta2_obs, logRe_obs, logMh, zl, zs)
     logM1, beta1 = solve_lens_parameters_from_obs(theta1_obs + delta, theta2_obs, logRe_obs, logMh, zl, zs)
