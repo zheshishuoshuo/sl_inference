@@ -5,20 +5,53 @@ import numpy as np
 from .sl_profiles import nfw, deVaucouleurs as deV
 from scipy.optimize import brentq
 
+# Try to import the Cython-accelerated routines.  If the extension is not
+# available (e.g., on platforms without a C compiler), fall back to the pure
+# Python implementations below.
+try:  # pragma: no cover - optional acceleration
+    from .lens_solver_cy import (
+        solve_single_lens as _solve_single_lens_cy,
+        alpha_star_unit as alpha_star_unit_cy,
+        alpha_halo as alpha_halo_cy,
+    )
+    _CYTHON_AVAILABLE = True
+except Exception:  # pragma: no cover - extension not compiled
+    _CYTHON_AVAILABLE = False
+
 
 def solve_single_lens(model, beta_unit):
-   caustic_max_at_lens_plane = model.solve_xradcrit()  # [kpc]
-   caustic_max_at_source_plane = model.solve_ycaustic()  # [kpc]
-   beta = beta_unit * caustic_max_at_source_plane  # [kpc]
-   einstein_radius = model.einstein_radius()  # [kpc]
+    """Solve the lens equation for a given ``LensModel``.
 
-   def lens_equation(x):
-       return model.alpha(x) - x + beta
-   
-   xA = brentq(lens_equation, einstein_radius, 100*einstein_radius)
-   xB = brentq(lens_equation, -einstein_radius, -caustic_max_at_lens_plane)
-   # print(caustic_max_at_lens_plane, caustic_max_at_source_plane, beta)
-   return xA, xB
+    If the optional Cython extension is available, the root finding and
+    deflection calculations are performed in C for speed.  Otherwise a pure
+    Python implementation using :func:`scipy.optimize.brentq` is used.
+    """
+    caustic_max_at_lens_plane = model.solve_xradcrit()  # [kpc]
+    caustic_max_at_source_plane = model.solve_ycaustic()  # [kpc]
+    beta = beta_unit * caustic_max_at_source_plane  # [kpc]
+    einstein_radius = model.einstein_radius()  # [kpc]
+
+    if _CYTHON_AVAILABLE:
+        # Use the compiled implementation.  Pass in the pre-computed NFW grid
+        # stored on the model to avoid Python overhead inside the solver.
+        return _solve_single_lens_cy(
+            model.Rkpc,
+            model._Sigma,
+            model.M_star,
+            model.Re,
+            model.s_cr,
+            beta,
+            einstein_radius,
+            caustic_max_at_lens_plane,
+        )
+
+    # Fallback Python implementation using SciPy's brentq root finder.
+    def lens_equation(x):
+        return model.alpha(x) - x + beta
+
+    xA = brentq(lens_equation, einstein_radius, 100 * einstein_radius)
+    xB = brentq(lens_equation, -einstein_radius, -caustic_max_at_lens_plane)
+    return xA, xB
 
 def solve_lens_parameters_from_obs(xA_obs, xB_obs, logRe_obs, logM_halo, zl, zs):
 
