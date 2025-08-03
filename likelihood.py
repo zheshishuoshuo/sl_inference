@@ -4,6 +4,7 @@ from .lens_solver import solve_lens_parameters_from_obs, compute_detJ
 from .cached_A import cached_A_interp
 from .norm_computer.compute_norm_grid import logRe_of_logMsps
 from scipy.stats import norm
+from functools import lru_cache
 import numpy as np
 # def log_prior(eta): ...
 # def log_likelihood(...): ...
@@ -37,6 +38,14 @@ def initializer_for_pool(data_df_, logMstar_list_, detJ_list_, use_interp_):
     )
 
 
+@lru_cache(maxsize=None)
+def _solve_lens_parameters_cached(xA_obs, xB_obs, logRe_obs, logMh, zl, zs):
+    return solve_lens_parameters_from_obs(xA_obs, xB_obs, logRe_obs, logMh, zl, zs)
+
+
+@lru_cache(maxsize=None)
+def _compute_detJ_cached(xA_obs, xB_obs, logRe_obs, logMh, zl, zs):
+    return compute_detJ(xA_obs, xB_obs, logRe_obs, logMh, zl, zs)
 
 
 def log_prior(eta):
@@ -71,7 +80,14 @@ def likelihood_single_fast_optimized(
     logalpha_grid = np.linspace(
         mu_alpha - 4 * sigma_alpha, mu_alpha + 4 * sigma_alpha, gridN
     )
-    Z = np.zeros((gridN, gridN))
+
+    logM_star_arr = np.empty(gridN)
+    detJ_arr = np.empty(gridN)
+    selA_arr = np.empty(gridN)
+    selB_arr = np.empty(gridN)
+    p_magA_arr = np.empty(gridN)
+    p_magB_arr = np.empty(gridN)
+    valid_mask = np.ones(gridN, dtype=bool)
 
     for i, logMh in enumerate(logMh_grid):
         try:
@@ -79,37 +95,60 @@ def likelihood_single_fast_optimized(
                 logM_star = float(logMstar_interp(logMh))
                 detJ = float(detJ_interp(logMh))
             else:
-                logM_star, _ = solve_lens_parameters_from_obs(xA_obs, xB_obs, logRe_obs, logMh, zl, zs)
-                detJ = compute_detJ(xA_obs, xB_obs, logRe_obs, logMh, zl, zs)
-        except:
-            continue
-
-        try:
-            model = LensModel(logM_star=logM_star, logM_halo=logMh, logRe=logRe_obs, zl=zl, zs=zs)
-            muA, muB = model.mu_from_rt(xA_obs), model.mu_from_rt(xB_obs)
+                logM_star, _ = _solve_lens_parameters_cached(
+                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
+                )
+                detJ = _compute_detJ_cached(
+                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
+                )
+            model = LensModel(
+                logM_star=logM_star, logM_halo=logMh, logRe=logRe_obs, zl=zl, zs=zs
+            )
+            muA = model.mu_from_rt(xA_obs)
+            muB = model.mu_from_rt(xB_obs)
             selA = selection_function(muA, m_lim, ms, sigma_m)
             selB = selection_function(muB, m_lim, ms, sigma_m)
             p_magA = mag_likelihood(m1_obs, muA, ms, sigma_m)
             p_magB = mag_likelihood(m2_obs, muB, ms, sigma_m)
-        except:
-            continue
+        except Exception:
+            valid_mask[i] = False
+            logM_star = 0.0
+            detJ = 0.0
+            selA = selB = 0.0
+            p_magA = p_magB = 0.0
 
-        for j, logalpha in enumerate(logalpha_grid):
-            p_Mstar = norm.pdf(logM_sps_obs, loc=logM_star - logalpha, scale=0.1)
-            mu_DM_local = mu0 + beta * (logM_star - 11.4)
-            p_logMh = norm.pdf(logMh, loc=mu_DM_local, scale=sigma)
-            p_logalpha = norm.pdf(logalpha, loc=mu_alpha, scale=sigma_alpha)
+        logM_star_arr[i] = logM_star
+        detJ_arr[i] = detJ
+        selA_arr[i] = selA
+        selB_arr[i] = selB
+        p_magA_arr[i] = p_magA
+        p_magB_arr[i] = p_magB
 
-            Z[i, j] = (
-                p_Mstar
-                * p_logMh
-                * p_logalpha
-                * detJ
-                * selA
-                * selB
-                * p_magA
-                * p_magB
-            )
+    p_logalpha_arr = norm.pdf(logalpha_grid, loc=mu_alpha, scale=sigma_alpha)
+
+    mu_DM_local_arr = mu0 + beta * (logM_star_arr - 11.4)
+    p_logMh_arr = np.where(
+        valid_mask,
+        norm.pdf(logMh_grid, loc=mu_DM_local_arr, scale=sigma),
+        0.0,
+    )
+
+    p_Mstar_arr = norm.pdf(
+        logM_sps_obs,
+        loc=logM_star_arr[:, None] - logalpha_grid[None, :],
+        scale=0.1,
+    )
+
+    coeff = (
+        detJ_arr
+        * selA_arr
+        * selB_arr
+        * p_magA_arr
+        * p_magB_arr
+        * p_logMh_arr
+    )[:, None]
+
+    Z = p_Mstar_arr * p_logalpha_arr[None, :] * coeff
 
     integral = np.trapz(np.trapz(Z, logalpha_grid, axis=1), logMh_grid)
     return max(integral, 1e-300)
