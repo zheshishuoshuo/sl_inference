@@ -23,7 +23,7 @@ def run():
         nsteps=500,
         ndim=5,
         initial_guess=np.array([12, 2.2, 0.5, 0.2, 0.1]),
-        processes=mp.cpu_count(),
+        processes=min(2, mp.cpu_count()),
     )
 
     samples = sampler.get_chain(flat=True, discard=100)

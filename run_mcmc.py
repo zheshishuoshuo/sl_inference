@@ -1,5 +1,6 @@
 import numpy as np
 import emcee
+from emcee import moves
 from emcee.backends import HDFBackend
 import multiprocessing
 from functools import partial
@@ -26,7 +27,37 @@ def run_mcmc(
     initial_guess=None,
     resume=True,
     processes=None,
+    use_advanced_moves=True,
 ):
+    """Run MCMC sampling for the lens model parameters.
+
+    Parameters
+    ----------
+    data_df : pandas.DataFrame
+        Observed data for each lens system.
+    sim_id : str
+        Identifier for pre-computed lensing tables.
+    log_posterior_func : callable
+        Function computing the log-posterior.
+    backend_file : str, optional
+        Name of the HDF5 backend file.
+    nwalkers, nsteps, ndim : int, optional
+        Sampler configuration parameters.
+    initial_guess : array-like, optional
+        Starting point for walkers when no previous chain exists.
+    resume : bool, optional
+        Resume from existing backend if available.
+    processes : int, optional
+        Number of worker processes for parallelization.
+    use_advanced_moves : bool, optional
+        If True, apply a differential evolution proposal to enhance
+        sampling efficiency.
+
+    Returns
+    -------
+    emcee.EnsembleSampler
+        The configured and executed sampler instance.
+    """
     if processes is None:
         processes = max(1, int(multiprocessing.cpu_count() // 1.5))
 
@@ -100,13 +131,17 @@ def run_mcmc(
     # ✅ 只传入 eta 参数，数据由 initializer 设置为每个子进程的全局变量
     logpost = partial(log_posterior_func)
 
+    move = None
+    if use_advanced_moves:
+        move = moves.DEMove()
+
     with multiprocessing.get_context("spawn").Pool(
         processes=processes,
         initializer=initializer_for_pool,
         initargs=(data_df, tables),
     ) as pool:
         sampler = emcee.EnsembleSampler(
-            nwalkers, ndim, logpost, pool=pool, backend=backend
+            nwalkers, ndim, logpost, pool=pool, backend=backend, moves=move
         )
         sampler.run_mcmc(p0, nsteps, progress=True)
 
