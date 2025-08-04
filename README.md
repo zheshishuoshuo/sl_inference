@@ -1,3 +1,17 @@
+# Data directory
+
+All intermediate results and outputs are stored in the ``data/`` directory.
+Each run writes files under ``data/<category>/<sim_id>/``.  The categories
+currently used are:
+
+* ``tables`` – pre-computed lensing grids;
+* ``chains`` – MCMC sampling results.
+
+At the start of every run two bookkeeping files are written:
+``params.json`` containing the run configuration and ``metadata.json`` with
+timestamps.  Old data can be removed by deleting their directories, e.g.
+``rm -r data/chains/<sim_id>``.
+
 # It has been extended version
 
 # wait for exec end of Aeta

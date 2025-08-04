@@ -4,12 +4,15 @@ from .mock_generator import run_mock_simulation
 from .likelihood import log_posterior, initializer_for_pool
 import multiprocessing as mp
 import os
+from pathlib import Path
 import numpy as np
 
 def main():
     mock_lens_data, mock_observed_data = run_mock_simulation(n_samples=100)
-    mock_lens_data.to_csv(os.path.join(os.path.dirname(__file__), "tables", "mock_lens_data.csv"), index=True)
-    mock_observed_data.to_csv(os.path.join(os.path.dirname(__file__), "tables", "mock_observed_data.csv"), index=True)
+    data_dir = Path(__file__).resolve().parent / "data" / "tables" / "sim_example"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    mock_lens_data.to_csv(data_dir / "mock_lens_data.csv", index=True)
+    mock_observed_data.to_csv(data_dir / "mock_observed_data.csv", index=True)
     sampler = run_mcmc(
         data_df=mock_observed_data,
         sim_id="sim_example",

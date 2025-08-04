@@ -3,7 +3,7 @@
 
 This script generates mock lensed systems and tabulates the lensing
 solutions on a grid of halo masses. The resulting arrays are saved under
-``tables/<sim_id>/`` as ``lens_<id>_grid.npz`` files together with a
+``data/tables/<sim_id>/`` as ``lens_<id>_grid.npz`` files together with a
 ``metadata.json`` description of the simulation.
 
 The script skips already existing ``npz`` files to avoid redundant
@@ -13,7 +13,6 @@ computation.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import types
 from datetime import datetime
@@ -36,6 +35,7 @@ import importlib
 
 mock_generator = importlib.import_module("sl_inference.mock_generator")
 interpolator = importlib.import_module("sl_inference.interpolator")
+io = importlib.import_module("sl_inference.utils.io")
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ def build_tables(
     logmh_min: float,
     logmh_max: float,
     logmh_step: float,
-    sim_id: str,
+    sim_id: str | None,
     mag_source: float,
     maximum_magnitude: float,
     zl: float,
@@ -58,8 +58,26 @@ def build_tables(
 
     logmh_grid = np.arange(logmh_min, logmh_max + logmh_step, logmh_step)
 
-    out_dir = ROOT / "tables" / sim_id
+    config = {
+        "n_samples": int(n_samples),
+        "logmh_min": float(logmh_min),
+        "logmh_max": float(logmh_max),
+        "logmh_step": float(logmh_step),
+        "mag_source": float(mag_source),
+        "maximum_magnitude": float(maximum_magnitude),
+        "zl": float(zl),
+        "zs": float(zs),
+        "process": int(process),
+    }
+    if sim_id is None:
+        sim_id = io.generate_sim_id(config)
+
+    out_dir = ROOT / "data" / "tables" / sim_id
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    start_time = datetime.utcnow().isoformat()
+    io.write_metadata(out_dir / "params.json", config)
+    io.write_metadata(out_dir / "metadata.json", {"start_time": start_time})
 
     mock_lens_data, _ = mock_generator.run_mock_simulation(
         n_samples,
@@ -95,20 +113,12 @@ def build_tables(
         )
 
     metadata = {
-        "n_samples": int(n_samples),
+        **config,
         "n_lenses": int(len(mock_lens_data)),
-        "logmh_min": float(logmh_min),
-        "logmh_max": float(logmh_max),
-        "logmh_step": float(logmh_step),
-        "mag_source": float(mag_source),
-        "maximum_magnitude": float(maximum_magnitude),
-        "zl": float(zl),
-        "zs": float(zs),
-        "process": int(process),
-        "timestamp": datetime.utcnow().isoformat(),
+        "start_time": start_time,
+        "end_time": datetime.utcnow().isoformat(),
     }
-    with open(out_dir / "metadata.json", "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
+    io.write_metadata(out_dir / "metadata.json", metadata)
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +136,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--sim-id",
         type=str,
-        default=datetime.utcnow().strftime("%Y%m%d_%H%M%S"),
-        help="identifier for this simulation run",
+        default=None,
+        help="identifier for this simulation run (auto-generated if omitted)",
     )
     parser.add_argument("--mag-source", type=float, default=26.0)
     parser.add_argument("--maximum-magnitude", type=float, default=26.5)
