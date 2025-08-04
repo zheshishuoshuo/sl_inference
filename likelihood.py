@@ -1,10 +1,9 @@
 from .utils import selection_function, mag_likelihood
 from .lens_model import LensModel
-from .lens_solver import solve_lens_parameters_from_obs, compute_detJ
 from .cached_A import cached_A_interp
 from .norm_computer.compute_norm_grid import logRe_of_logMsps
 from scipy.stats import norm
-from functools import lru_cache
+from pathlib import Path
 import numpy as np
 # def log_prior(eta): ...
 # def log_likelihood(...): ...
@@ -16,36 +15,67 @@ import numpy as np
 # likelihood.py 顶部
 _context = {
     "data_df": None,
-    "logMstar_interp_list": None,
-    "detJ_interp_list": None,
-    "use_interp": False
+    "precomputed_tables": None,
 }
 
 
-def set_context(data_df, logMstar_interp_list, detJ_interp_list, use_interp=False):
+def set_context(data_df, precomputed_tables):
     _context["data_df"] = data_df
-    _context["logMstar_interp_list"] = logMstar_interp_list
-    _context["detJ_interp_list"] = detJ_interp_list
-    _context["use_interp"] = use_interp
+    _context["precomputed_tables"] = precomputed_tables
 
 
-def initializer_for_pool(data_df_, logMstar_list_, detJ_list_, use_interp_):
+def initializer_for_pool(data_df_, tables_):
     set_context(
         data_df=data_df_,
-        logMstar_interp_list=logMstar_list_,
-        detJ_interp_list=detJ_list_,
-        use_interp=use_interp_
+        precomputed_tables=tables_,
     )
 
 
-@lru_cache(maxsize=None)
-def _solve_lens_parameters_cached(xA_obs, xB_obs, logRe_obs, logMh, zl, zs):
-    return solve_lens_parameters_from_obs(xA_obs, xB_obs, logRe_obs, logMh, zl, zs)
+def load_precomputed_tables(sim_id):
+    """Load pre-computed lensing tables for a given simulation id.
 
+    Parameters
+    ----------
+    sim_id : str
+        Identifier of the simulation run. The function expects files of the
+        form ``tables/<sim_id>/lens_*_grid.npz`` to be present.
 
-@lru_cache(maxsize=None)
-def _compute_detJ_cached(xA_obs, xB_obs, logRe_obs, logMh, zl, zs):
-    return compute_detJ(xA_obs, xB_obs, logRe_obs, logMh, zl, zs)
+    Returns
+    -------
+    list[dict]
+        A list with one entry per lens. Each entry is a dictionary containing
+        ``logMh_grid``, ``logM_star`` and ``detJ`` arrays.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the directory or required ``npz`` files are missing.
+    """
+
+    tables_dir = Path(__file__).resolve().parent / "tables" / sim_id
+    if not tables_dir.exists():
+        raise FileNotFoundError(
+            f"Precomputed tables for sim_id '{sim_id}' not found at {tables_dir}"
+        )
+
+    npz_files = sorted(tables_dir.glob("*.npz"))
+    if not npz_files:
+        raise FileNotFoundError(
+            f"No npz files found in precomputed table directory {tables_dir}"
+        )
+
+    tables = []
+    for file in npz_files:
+        with np.load(file) as data:
+            tables.append(
+                {
+                    "logMh_grid": data["logMh_grid"],
+                    "logM_star": data["logM_star"],
+                    "detJ": data["detJ"],
+                }
+            )
+
+    return tables
 
 
 def log_prior(eta):
@@ -82,39 +112,35 @@ def log_prior(eta):
 
 
 def likelihood_single_fast_optimized(
-    di, eta, gridN=35, zl=0.3, zs=2.0, ms=26.0, sigma_m=0.1, m_lim=26.5,
-    logMstar_interp=None, detJ_interp=None, use_interp=False
+    di,
+    eta,
+    table,
+    zl=0.3,
+    zs=2.0,
+    ms=26.0,
+    sigma_m=0.1,
+    m_lim=26.5,
 ):
     xA_obs, xB_obs, logM_sps_obs, logRe_obs, m1_obs, m2_obs = di
     mu0, beta, sigma, mu_alpha, sigma_alpha = eta
-    xi = 0.0
 
-    mu_DM_i = mu0 + beta * ((logM_sps_obs + mu_alpha) - 11.4)
-    logMh_grid = np.linspace(mu_DM_i - 4 * sigma, mu_DM_i + 4 * sigma, gridN)
+    logMh_grid = table["logMh_grid"]
+    logM_star_arr = table["logM_star"]
+    detJ_arr = table["detJ"]
+    gridN = len(logMh_grid)
+
     logalpha_grid = np.linspace(
         mu_alpha - 4 * sigma_alpha, mu_alpha + 4 * sigma_alpha, gridN
     )
 
-    logM_star_arr = np.empty(gridN)
-    detJ_arr = np.empty(gridN)
     selA_arr = np.empty(gridN)
     selB_arr = np.empty(gridN)
     p_magA_arr = np.empty(gridN)
     p_magB_arr = np.empty(gridN)
     valid_mask = np.ones(gridN, dtype=bool)
 
-    for i, logMh in enumerate(logMh_grid):
+    for i, (logMh, logM_star) in enumerate(zip(logMh_grid, logM_star_arr)):
         try:
-            if use_interp:
-                logM_star = float(logMstar_interp(logMh))
-                detJ = float(detJ_interp(logMh))
-            else:
-                logM_star, _ = _solve_lens_parameters_cached(
-                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
-                )
-                detJ = _compute_detJ_cached(
-                    xA_obs, xB_obs, logRe_obs, logMh, zl, zs
-                )
             model = LensModel(
                 logM_star=logM_star, logM_halo=logMh, logRe=logRe_obs, zl=zl, zs=zs
             )
@@ -126,13 +152,9 @@ def likelihood_single_fast_optimized(
             p_magB = mag_likelihood(m2_obs, muB, ms, sigma_m)
         except Exception:
             valid_mask[i] = False
-            logM_star = 0.0
-            detJ = 0.0
             selA = selB = 0.0
             p_magA = p_magB = 0.0
 
-        logM_star_arr[i] = logM_star
-        detJ_arr[i] = detJ
         selA_arr[i] = selA
         selB_arr[i] = selB
         p_magA_arr[i] = p_magA
@@ -169,11 +191,8 @@ def likelihood_single_fast_optimized(
 
 
 def log_likelihood(eta, **kwargs):
-    # global _data_df, _logMstar_interp_list, _detJ_interp_list, _use_interp
     _data_df = _context["data_df"]
-    _logMstar_interp_list = _context["logMstar_interp_list"]
-    _detJ_interp_list = _context["detJ_interp_list"]
-    _use_interp = _context["use_interp"]
+    _tables = _context["precomputed_tables"]
 
     mu0, beta, sigma, mu_alpha, sigma_alpha = eta
     xi = 0.0
@@ -198,16 +217,13 @@ def log_likelihood(eta, **kwargs):
         except:
             return -np.inf
 
-        logMstar_interp = _logMstar_interp_list[i] if _use_interp else None
-        detJ_interp = _detJ_interp_list[i] if _use_interp else None
-
         try:
+            table = _tables[i] if _tables is not None else None
             L_i = likelihood_single_fast_optimized(
-                di, eta,
-                logMstar_interp=logMstar_interp,
-                detJ_interp=detJ_interp,
-                use_interp=_use_interp,
-                **kwargs
+                di,
+                eta,
+                table=table,
+                **kwargs,
             )
             if not np.isfinite(L_i) or L_i <= 0:
                 return -np.inf
