@@ -1,9 +1,7 @@
 from .run_mcmc import run_mcmc
 from .likelihood import log_posterior
 from .mock_generator import run_mock_simulation
-from .likelihood import log_posterior, initializer_for_pool
 import multiprocessing as mp
-import os
 from pathlib import Path
 import numpy as np
 

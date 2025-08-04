@@ -6,17 +6,14 @@ import numpy as np
 from .utils import fit_alphasps
 from .utils import fit_halo_model_crossfit_fixed_xi
 import pandas as pd
-import os
+import multiprocessing as mp
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 def run():
     mock_lens_data, mock_observed_data = run_mock_simulation(n_samples=20)
     test_filename = "chains_eta4.h5"
-    chain_dir = os.path.join(os.path.dirname(__file__), 'data', 'chains', 'sim_example')
-    if os.path.exists(os.path.join(chain_dir, test_filename)):
-        print(f"[INFO] 继续采样：读取已有文件 {test_filename}")
-    
+
     sampler = run_mcmc(
         data_df=mock_observed_data,
         sim_id="sim_example",
@@ -26,10 +23,10 @@ def run():
         nsteps=500,
         ndim=5,
         initial_guess=np.array([12, 2.2, 0.5, 0.2, 0.1]),
-        processes=10
-        )
+        processes=mp.cpu_count(),
+    )
 
-    samples = sampler.get_chain(flat=True, discard=4000)
+    samples = sampler.get_chain(flat=True, discard=100)
     df = pd.DataFrame(samples, columns=[
         "mu0", "beta", "sigma", "mu_alpha", "sigma_alpha"
     ])
@@ -76,24 +73,28 @@ def run():
 
     mualpha, sigmaalpha = fit_alphasps(mock_lens_data=mock_lens_data)
 
-    fited_data_values = {
+    fitted_data_values = {
         "mu0": mu_h0,
         "beta": beta_h,
         "sigma": sigma_h,
         "mu_alpha": mualpha,
         "sigma_alpha": sigmaalpha
-    }   
+    }
 
     for i, param1 in enumerate(g.x_vars):
         ax = g.axes[i, i]
-        ax.axvline(fited_data_values[param1], color="blue", linestyle="--", linewidth=1.2)
+        ax.axvline(fitted_data_values[param1], color="blue", linestyle="--", linewidth=1.2)
 
         for j in range(i):
             ax = g.axes[i, j]
-            ax.axvline(fited_data_values[g.x_vars[j]], color="blue", linestyle="--", linewidth=1)
-            ax.axhline(fited_data_values[g.x_vars[i]], color="blue", linestyle="--", linewidth=1)
-            ax.plot(fited_data_values[g.x_vars[j]], fited_data_values[g.x_vars[i]],
-                    "bo", markersize=3)
+            ax.axvline(fitted_data_values[g.x_vars[j]], color="blue", linestyle="--", linewidth=1)
+            ax.axhline(fitted_data_values[g.x_vars[i]], color="blue", linestyle="--", linewidth=1)
+            ax.plot(
+                fitted_data_values[g.x_vars[j]],
+                fitted_data_values[g.x_vars[i]],
+                "bo",
+                markersize=3,
+            )
 
     plt.show()
 
