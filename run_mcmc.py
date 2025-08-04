@@ -5,12 +5,15 @@ import multiprocessing
 from functools import partial
 from pathlib import Path
 from datetime import datetime
+import subprocess
+import json
+import hashlib
 from .likelihood import (
     log_posterior,
     initializer_for_pool,
     load_precomputed_tables,
 )  # ⬅ 你已经写了它！
-from .utils.io import write_metadata
+from .utils.io import write_metadata, read_metadata
 
 def run_mcmc(
     data_df,
@@ -27,7 +30,19 @@ def run_mcmc(
     if processes is None:
         processes = max(1, int(multiprocessing.cpu_count() // 1.5))
 
-    out_dir = Path(__file__).resolve().parent / "data" / "chains" / sim_id
+    # --- bookkeeping and directory structure ---
+    commit_hash = "unknown"
+    try:
+        commit_hash = (
+            subprocess.check_output(["git", "rev-parse", "HEAD"])
+            .decode()
+            .strip()
+        )
+    except Exception:
+        pass
+
+    run_id = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    out_dir = Path(__file__).resolve().parent / "inference" / sim_id / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
     backend_path = out_dir / backend_file
 
@@ -39,9 +54,26 @@ def run_mcmc(
         "resume": bool(resume),
         "processes": int(processes),
     }
+
+    tables_meta_path = (
+        Path(__file__).resolve().parent / "data" / "tables" / sim_id / "metadata.json"
+    )
+    table_version = "unknown"
+    if tables_meta_path.exists():
+        tables_meta = read_metadata(tables_meta_path)
+        table_version = hashlib.sha1(
+            json.dumps(tables_meta, sort_keys=True).encode("utf-8")
+        ).hexdigest()[:8]
+
     start_time = datetime.utcnow().isoformat()
+    metadata = {
+        "start_time": start_time,
+        "git_commit": commit_hash,
+        "sim_id": sim_id,
+        "precomputed_table_version": table_version,
+    }
     write_metadata(out_dir / "params.json", params)
-    write_metadata(out_dir / "metadata.json", {"start_time": start_time})
+    write_metadata(out_dir / "metadata.json", metadata)
 
     tables = load_precomputed_tables(sim_id)
     if len(tables) < len(data_df):
@@ -80,10 +112,8 @@ def run_mcmc(
 
 
 
-    write_metadata(
-        out_dir / "metadata.json",
-        {"start_time": start_time, "end_time": datetime.utcnow().isoformat()},
-    )
+    metadata["end_time"] = datetime.utcnow().isoformat()
+    write_metadata(out_dir / "metadata.json", metadata)
 
     print("[INFO] 采样完成")
     return sampler
