@@ -1,7 +1,6 @@
 """sl_inference package
 
-Tools for modelling strong gravitational lenses and performing inference on their physical properties. The
-module provides convenient imports for the most commonly used classes and functions."""
+Tools for modelling strong gravitational lenses and performing inference on their physical properties."""
 
 from .lens_model import LensModel
 from .lens_solver import (
@@ -10,23 +9,15 @@ from .lens_solver import (
     compute_detJ,
     precompute_sigma_spline,
 )
-from .lens_properties import lens_properties, observed_data
 from .mass_sampler import (
     mstar_gene,
     logRe_given_logM,
     logMh_given_logM_logRe,
     generate_samples,
 )
-from .run_mcmc import run_mcmc
-from .likelihood import (
-    set_context,
-    initializer_for_pool,
-    log_prior,
-    likelihood_single_fast_optimized,
-    log_likelihood,
-    log_posterior,
-)
-from .utils import selection_function, mag_likelihood
+from .mock_generator import run_mock_simulation
+from .grid_builder import build_grid
+from .likelihood import GridLikelihood
 
 __all__ = [
     "LensModel",
@@ -34,23 +25,13 @@ __all__ = [
     "solve_lens_parameters_from_obs",
     "compute_detJ",
     "precompute_sigma_spline",
-    "lens_properties",
-    "observed_data",
     "mstar_gene",
     "logRe_given_logM",
     "logMh_given_logM_logRe",
     "generate_samples",
-    "theoretical_logRe_pdf",
-    "theoretical_logMh_pdf",
-    "run_mcmc",
-    "set_context",
-    "initializer_for_pool",
-    "log_prior",
-    "likelihood_single_fast_optimized",
-    "log_likelihood",
-    "log_posterior",
-    "selection_function",
-    "mag_likelihood",
+    "run_mock_simulation",
+    "build_grid",
+    "GridLikelihood",
 ]
 
-__version__ = "0.1"
+__version__ = "0.2"

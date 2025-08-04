@@ -1,87 +1,19 @@
-# It has been extended version
+sl_inference now uses a two-stage workflow for fast likelihood evaluation.
 
-# wait for exec end of Aeta
+## 1. Grid building
 
-# now care about the mmdist
+Use `grid_builder.build_grid` to pre-compute lensing observables on a two-dimensional grid of dark-matter parameters (`gamma_dm` and `logM_dm`). The results are stored in an HDF5 table.
 
+## 2. Likelihood evaluation
 
-# target
+`likelihood.GridLikelihood` loads the HDF5 table and evaluates the likelihood for hyper-parameters `eta` by spline-integrating the weighted grid.
 
-- use right Msps relation
-- see why multi peak (even small)
+## 3. Minimal example
 
----------------
-# modify
+Run
 
+```
+python -m sl_inference.minimal_example
+```
 
-
-
-
-- mass_sampler.py      &#x2714;
-- lens_model.py        &#x2714;
-- lens_solver.py       &#x2714;
-- lens_properties.py   &#x2714;
-- mock_generator.py    &#x2714;
--------------
-- cached_A.py          &#x2714;
-- interpolator.py      
-- utils.py            &#x2714;
-----------------------
-- likelihood.py
-- run_mcmc.py
-- main.py
-
-
-over
-
-# Next step：
-01. ~~fix error because of __init__~~
-0. ~~consistent model---new branch~~
-1. ~~check if all sps error done    ----？~~
-2. think about all likelihood use tabulate
-3. ~~directly fit the source data~~
-4. extended model
-5. varid source
-6. undetected source
-7. 0 In 4D parameter space, perform large-scale random sampling first, then iteratively select subsets to build the interpolator and expand as needed to balance accuracy and efficiency.
-
-7. microlensing
-
-
-
-
-# another line
-
-- why result on jupyter still have multi peak?
-
-
-# attention:
-
-know no relation between Mh and Re in the data generated
-
-# Pipeline to generate all magnification distributions
-
-## generate samples ($\kappa$,$\gamma$,$s$)
-
-1. a set, oversampled
-2. select part of it
-
-## make enough maps fo every sample
-
-## make distribution
-
-## interpolation
-
-
-
-
-
-1. IMF in the project ??????
-2. the bias
-
-
-# logMh to correct
-
-# use cython
-
-# better 先验 、 重载先验方法
+to generate mock data, build a grid, and execute a single MCMC step. All generated files are written under `data/` with separate sub-directories for mock data, interpolation tables, and inference outputs.
