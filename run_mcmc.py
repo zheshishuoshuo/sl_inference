@@ -4,13 +4,15 @@ import emcee
 from emcee.backends import HDFBackend
 import multiprocessing
 from functools import partial
-from .likelihood import log_posterior, initializer_for_pool  # ⬅ 你已经写了它！
+from .likelihood import (
+    log_posterior,
+    initializer_for_pool,
+    load_precomputed_tables,
+)  # ⬅ 你已经写了它！
 
 def run_mcmc(
     data_df,
-    logMstar_interp_list,
-    detJ_interp_list,
-    use_interp,
+    sim_id,
     log_posterior_func,
     backend_file="chains_eta.h5",
     nwalkers=50,
@@ -18,12 +20,18 @@ def run_mcmc(
     ndim=5,
     initial_guess=None,
     resume=True,
-    processes=None
+    processes=None,
 ):
     if processes is None:
         processes = max(1, int(multiprocessing.cpu_count() // 1.5))
 
     backend_file = os.path.join(os.path.dirname(__file__), 'chains', backend_file)
+
+    tables = load_precomputed_tables(sim_id)
+    if len(tables) < len(data_df):
+        raise ValueError(
+            f"Not enough precomputed tables for sim_id '{sim_id}'"
+        )
 
     if resume and os.path.exists(backend_file):
         print(f"[INFO] 继续采样：读取已有文件 {backend_file}")
@@ -47,7 +55,7 @@ def run_mcmc(
     with multiprocessing.get_context("spawn").Pool(
         processes=processes,
         initializer=initializer_for_pool,
-        initargs=(data_df, logMstar_interp_list, detJ_interp_list, use_interp)
+        initargs=(data_df, tables),
     ) as pool:
         sampler = emcee.EnsembleSampler(
             nwalkers, ndim, logpost, pool=pool, backend=backend

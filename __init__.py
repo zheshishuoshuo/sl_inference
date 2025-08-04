@@ -25,6 +25,7 @@ from .likelihood import (
     likelihood_single_fast_optimized,
     log_likelihood,
     log_posterior,
+    load_precomputed_tables,
 )
 from .utils import selection_function, mag_likelihood
 
@@ -49,6 +50,7 @@ __all__ = [
     "likelihood_single_fast_optimized",
     "log_likelihood",
     "log_posterior",
+    "load_precomputed_tables",
     "selection_function",
     "mag_likelihood",
 ]
