@@ -1,16 +1,24 @@
-# Data directory
+# Data and inference directories
 
-All intermediate results and outputs are stored in the ``data/`` directory.
-Each run writes files under ``data/<category>/<sim_id>/``.  The categories
-currently used are:
+Pre-computed lensing grids are stored under ``data/tables/<sim_id>/``.
+Results of an inference run are written to ``inference/<sim_id>/<run_id>/``.
+Each run produces two bookkeeping files:
 
-* ``tables`` – pre-computed lensing grids;
-* ``chains`` – MCMC sampling results.
+* ``params.json`` – the run configuration;
+* ``metadata.json`` – timestamps, the git commit hash, the ``sim_id`` and the
+  pre-computed table version.
 
-At the start of every run two bookkeeping files are written:
-``params.json`` containing the run configuration and ``metadata.json`` with
-timestamps.  Old data can be removed by deleting their directories, e.g.
-``rm -r data/chains/<sim_id>``.
+Old results can be removed by deleting their directories, e.g.
+``rm -r inference/<sim_id>/<run_id>``.
+
+## Reproducing an inference run
+
+1. Read ``git_commit``, ``sim_id`` and ``precomputed_table_version`` from
+   ``inference/<sim_id>/<run_id>/metadata.json``.
+2. Checkout the recorded commit: ``git checkout <git_commit>``.
+3. Ensure the matching pre-computed tables exist under
+   ``data/tables/<sim_id>/``.
+4. Run ``run_mcmc`` with the parameters stored in ``params.json``.
 
 # It has been extended version
 
