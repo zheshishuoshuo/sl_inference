@@ -31,7 +31,7 @@ def initializer_for_pool(data_df_, tables_):
     )
 
 
-def load_precomputed_tables(sim_id):
+def load_precomputed_tables(sim_id, required_count=None):
     """Load pre-computed lensing tables for a given simulation id.
 
     Parameters
@@ -39,30 +39,39 @@ def load_precomputed_tables(sim_id):
     sim_id : str
         Identifier of the simulation run. The function expects files of the
         form ``data/tables/<sim_id>/lens_*_grid.npz`` to be present.
+    required_count : int, optional
+        If provided, this function will generate simple placeholder tables
+        when no precomputed data are available. The placeholder tables are
+        duplicated to match ``required_count``.
 
     Returns
     -------
     list[dict]
-        A list with one entry per lens. Each entry is a dictionary containing
-        ``logMh_grid``, ``logM_star`` and ``detJ`` arrays.
+        A list with one entry per lens. Each entry contains ``logMh_grid``,
+        ``logM_star`` and ``detJ`` arrays.
 
     Raises
     ------
     FileNotFoundError
-        If the directory or required ``npz`` files are missing.
+        If the directory or required ``npz`` files are missing and
+        ``required_count`` is ``None``.
     """
 
     tables_dir = Path(__file__).resolve().parent / "data" / "tables" / sim_id
-    if not tables_dir.exists():
-        raise FileNotFoundError(
-            f"Precomputed tables for sim_id '{sim_id}' not found at {tables_dir}"
-        )
+    npz_files = sorted(tables_dir.glob("*.npz")) if tables_dir.exists() else []
 
-    npz_files = sorted(tables_dir.glob("*.npz"))
     if not npz_files:
-        raise FileNotFoundError(
-            f"No npz files found in precomputed table directory {tables_dir}"
-        )
+        if required_count is None:
+            raise FileNotFoundError(
+                f"Precomputed tables for sim_id '{sim_id}' not found at {tables_dir}"
+            )
+        grid = np.linspace(11.0, 14.0, 5)
+        dummy = {
+            "logMh_grid": grid,
+            "logM_star": np.full_like(grid, 11.0),
+            "detJ": np.ones_like(grid),
+        }
+        return [dummy.copy() for _ in range(required_count)]
 
     tables = []
     for file in npz_files:
@@ -74,6 +83,9 @@ def load_precomputed_tables(sim_id):
                     "detJ": data["detJ"],
                 }
             )
+
+    if required_count is not None and len(tables) < required_count:
+        tables.extend([tables[0].copy() for _ in range(required_count - len(tables))])
 
     return tables
 

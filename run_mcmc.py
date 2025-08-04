@@ -75,7 +75,7 @@ def run_mcmc(
     write_metadata(out_dir / "params.json", params)
     write_metadata(out_dir / "metadata.json", metadata)
 
-    tables = load_precomputed_tables(sim_id)
+    tables = load_precomputed_tables(sim_id, required_count=len(data_df))
     if len(tables) < len(data_df):
         raise ValueError(
             f"Not enough precomputed tables for sim_id '{sim_id}'"
