@@ -1,14 +1,16 @@
-import os
 import numpy as np
 import emcee
 from emcee.backends import HDFBackend
 import multiprocessing
 from functools import partial
+from pathlib import Path
+from datetime import datetime
 from .likelihood import (
     log_posterior,
     initializer_for_pool,
     load_precomputed_tables,
 )  # ⬅ 你已经写了它！
+from .utils.io import write_metadata
 
 def run_mcmc(
     data_df,
@@ -25,7 +27,21 @@ def run_mcmc(
     if processes is None:
         processes = max(1, int(multiprocessing.cpu_count() // 1.5))
 
-    backend_file = os.path.join(os.path.dirname(__file__), 'chains', backend_file)
+    out_dir = Path(__file__).resolve().parent / "data" / "chains" / sim_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    backend_path = out_dir / backend_file
+
+    params = {
+        "backend_file": backend_file,
+        "nwalkers": int(nwalkers),
+        "nsteps": int(nsteps),
+        "ndim": int(ndim),
+        "resume": bool(resume),
+        "processes": int(processes),
+    }
+    start_time = datetime.utcnow().isoformat()
+    write_metadata(out_dir / "params.json", params)
+    write_metadata(out_dir / "metadata.json", {"start_time": start_time})
 
     tables = load_precomputed_tables(sim_id)
     if len(tables) < len(data_df):
@@ -33,12 +49,12 @@ def run_mcmc(
             f"Not enough precomputed tables for sim_id '{sim_id}'"
         )
 
-    if resume and os.path.exists(backend_file):
-        print(f"[INFO] 继续采样：读取已有文件 {backend_file}")
-        backend = HDFBackend(backend_file, read_only=False)
+    if resume and backend_path.exists():
+        print(f"[INFO] 继续采样：读取已有文件 {backend_path}")
+        backend = HDFBackend(backend_path, read_only=False)
     else:
-        print(f"[INFO] 新建采样：创建新文件 {backend_file}")
-        backend = HDFBackend(backend_file)
+        print(f"[INFO] 新建采样：创建新文件 {backend_path}")
+        backend = HDFBackend(backend_path)
         backend.reset(nwalkers, ndim)
 
     if backend.iteration == 0:
@@ -63,6 +79,11 @@ def run_mcmc(
         sampler.run_mcmc(p0, nsteps, progress=True)
 
 
+
+    write_metadata(
+        out_dir / "metadata.json",
+        {"start_time": start_time, "end_time": datetime.utcnow().isoformat()},
+    )
 
     print("[INFO] 采样完成")
     return sampler

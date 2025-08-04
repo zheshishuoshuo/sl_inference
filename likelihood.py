@@ -38,7 +38,7 @@ def load_precomputed_tables(sim_id):
     ----------
     sim_id : str
         Identifier of the simulation run. The function expects files of the
-        form ``tables/<sim_id>/lens_*_grid.npz`` to be present.
+        form ``data/tables/<sim_id>/lens_*_grid.npz`` to be present.
 
     Returns
     -------
@@ -52,7 +52,7 @@ def load_precomputed_tables(sim_id):
         If the directory or required ``npz`` files are missing.
     """
 
-    tables_dir = Path(__file__).resolve().parent / "tables" / sim_id
+    tables_dir = Path(__file__).resolve().parent / "data" / "tables" / sim_id
     if not tables_dir.exists():
         raise FileNotFoundError(
             f"Precomputed tables for sim_id '{sim_id}' not found at {tables_dir}"

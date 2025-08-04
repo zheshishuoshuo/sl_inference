@@ -13,7 +13,8 @@ import seaborn as sns
 def run():
     mock_lens_data, mock_observed_data = run_mock_simulation(n_samples=20)
     test_filename = "chains_eta4.h5"
-    if os.path.exists(os.path.join(os.path.dirname(__file__),'chains', test_filename)):
+    chain_dir = os.path.join(os.path.dirname(__file__), 'data', 'chains', 'sim_example')
+    if os.path.exists(os.path.join(chain_dir, test_filename)):
         print(f"[INFO] 继续采样：读取已有文件 {test_filename}")
     
     sampler = run_mcmc(
